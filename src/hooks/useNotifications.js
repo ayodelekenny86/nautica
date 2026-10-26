@@ -2,9 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { list, insert, update, replaceAll } from '../lib/collections';
 import { supabase, supabaseUrl, anonKey, writeResult } from '../lib/supabase';
 
-const USE_SERVER = typeof window !== 'undefined' && !!supabaseUrl && !!anonKey;
-const SYNC_RETRY_MS = 5000;
-const SYNC_STORAGE_KEY = 'notifications-outbox';
 
 function enqueueOutbox(notification) {
   if (typeof window === 'undefined') return;

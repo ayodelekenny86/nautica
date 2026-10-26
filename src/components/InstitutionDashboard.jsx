@@ -162,9 +162,9 @@ export function InstitutionDashboard({ orders, showNotice }) {
     <>
       <div className="page-header">
         <div>
-          <p className="section-kicker">INSTITUTION WORKSPACE · ACCRA</p>
-          <h1>Your supply, as delivered.</h1>
-          <p>Manage scheduled deliveries, track water quality, and plan your budget.</p>
+          <p className="section-kicker">INSTITUTION DASHBOARD</p>
+          <h1>Your Water Supply, As Delivered</h1>
+          <p>Manage scheduled deliveries, track water quality, and plan your budget in one unified dashboard.</p>
         </div>
         <button className="primary-button" type="button" onClick={() => {
           setEditingSchedule(null);

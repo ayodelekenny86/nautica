@@ -31,7 +31,8 @@
     "deploy:live": "npm run build && npx firebase deploy --only hosting",
     "verify:live": "node scripts/verify-live.mjs",
     "supabase:deploy": "npx supabase functions deploy fcm pricing orders payments sellers ops config notifications ai",
-    "supabase:push": "npx supabase db push"
+    "supabase:push": "npx supabase db push",
+    "dev:firebase": "firebase emulators:start --only auth,firestore,storage,functions,hosting"
   },
   "eslintConfig": {
     "extends": [
