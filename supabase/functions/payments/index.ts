@@ -475,3 +475,8 @@ Deno.serve(async (req: Request) => {
     return fail(500, 'internal_error', 'Something went wrong.');
   }
 });
+
+
+// Hubtel support (popular in Ghana)
+const HUBTEL_CLIENT_ID = Deno.env.get('HUBTEL_CLIENT_ID') ?? '';
+const HUBTEL_CLIENT_SECRET = Deno.env.get('HUBTEL_CLIENT_SECRET') ?? '';

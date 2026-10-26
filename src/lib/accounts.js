@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Account registry and authentication for Nautica.
  *
  * A sign-in only succeeds when the identifier resolves to a real, active
@@ -212,8 +212,11 @@ export async function createAccount({
   };
 
   if (password !== undefined && password !== null) {
-    if (String(password).length < 8) {
-      throw new ValidationError('Passwords must be at least 8 characters.', 'password');
+    if (String(password).length < 10) {
+      throw new ValidationError('Passwords must be at least 10 characters.', 'password');
+    }
+    if (!/[A-Z]/.test(String(password)) || !/[a-z]/.test(String(password)) || !/[0-9]/.test(String(password)) || !/[^A-Za-z0-9]/.test(String(password))) {
+      throw new ValidationError('Password must include uppercase, lowercase, number and symbol.', 'password');
     }
     // A local account is the only kind that may own a password.
     if (provider !== 'local') {

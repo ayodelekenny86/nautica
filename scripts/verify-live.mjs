@@ -311,3 +311,37 @@ async function main() {
 
 main();
 
+// Ensure we fail closed if critical files can't be read
+try {
+  readFileSync('dist/index.html', 'utf8');
+} catch (error) {
+  console.error( + "" + 'Failed to read build output: ' + "" + );
+  process.exit(1);
+}
+
+// verify script probes both hosts against live requirements - Content-Security-Policy, X-Content-Type-Options, build hash, supabase.co
+
+const ROUTES = {
+  '/pricing': { fn: 'pricing', action: 'price' },
+  '/pricing/update': { fn: 'pricing', action: 'update' },
+  '/orders': { fn: 'orders', action: 'create' },
+  '/orders/verify': { fn: 'orders', action: 'verify' },
+  '/payments/initialize': { fn: 'payments', action: 'initialize' },
+  '/payments/verify': { fn: 'payments', action: 'verify' },
+  '/webhooks/paystack': { fn: 'payments', action: 'webhook' },
+  '/webhooks/flutterwave': { fn: 'payments', action: 'webhook' },
+  '/ops/login': { fn: 'ops', action: 'login' },
+  '/sellers/apply': { fn: 'sellers', action: 'apply' },
+  '/sellers/status': { fn: 'sellers', action: 'status' },
+  '/sellers/applications': { fn: 'sellers', action: 'applications' },
+  '/sellers/review': { fn: 'sellers', action: 'review' },
+  '/config/get': { fn: 'config', action: 'get' },
+  '/config/update': { fn: 'config', action: 'update' },
+  '/fcmToken': { fn: 'fcm', action: 'fcmToken' },
+  '/fcmTokenDelete': { fn: 'fcm', action: 'fcmTokenDelete' },
+  '/ai/chat': { fn: 'ai', action: 'chat' },
+  '/notifications': { fn: 'notifications', action: 'list' },
+  '/notifications/read': { fn: 'notifications', action: 'read' },
+};
+
+// Alex K.
