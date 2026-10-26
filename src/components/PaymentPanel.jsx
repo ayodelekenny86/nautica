@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+ï»¿import { useEffect, useMemo, useState } from 'react';
 import {
   buildReceipt,
   downloadReceipt,
@@ -62,8 +62,8 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
           return;
         }
         // The server names the order it settled. The panel can be showing a
-        // different one — the workspace picks whichever order is still
-        // outstanding — and a receipt built from the wrong order would name
+        // different one â€” the workspace picks whichever order is still
+        // outstanding â€” and a receipt built from the wrong order would name
         // the wrong reference, location and amount on a document the customer
         // keeps. The money is genuinely paid either way; only the paperwork
         // would be false.
@@ -134,7 +134,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
         <div><dt>Order value</dt><dd>{formatCedi(order.grossMinor ?? 0)}</dd></div>
         {/* Only shown when a charge is actually configured. The default plan has
             none, because the customer pays the discounted price inclusive, and a
-            GH¢0.00 line under "Order value" reads like a fee they were charged. */}
+            GHÂ¢0.00 line under "Order value" reads like a fee they were charged. */}
         {serviceChargeMinor > 0 && (
           <div><dt>Service charge</dt><dd>{formatCedi(serviceChargeMinor)}</dd></div>
         )}
@@ -165,9 +165,9 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
                onChange={(event) => setProvider(event.target.value)}
                disabled={busy}
              >
-               <option value="paystack">Paystack — MTN, Telecel, ATMo, card</option>
-               <option value="flutterwave">Flutterwave — MTN Mobile Money, card, bank transfer</option>
-               <option value="hubtel">Hubtel — MTN MoMo, Vodafone Cash, AirtelTigo Money, Bank</option>
+               <option value="paystack">Paystack â€” MTN, Telecel, ATMo, card</option>
+               <option value="flutterwave">Flutterwave â€” MTN Mobile Money, card, bank transfer</option>
+               <option value="hubtel">Hubtel â€” MTN MoMo, Vodafone Cash, AirtelTigo Money, Bank</option>
              </select>
            </label>
            <p className="form-hint">
@@ -194,7 +194,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
            </div>
            
            <button className="primary-button full" type="submit" disabled={busy || !termsAccepted}>
-             {busy ? 'Working…' : `Pay ${formatCedi(chargedMinor)}`}
+             {busy ? 'Workingâ€¦' : `Pay ${formatCedi(chargedMinor)}`}
            </button>
         </form>
       )}
@@ -207,7 +207,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
           <h3>Receipt {receipt.reference}</h3>
           <dl>
             {/* Same rendering rule as the downloaded document, so the card the
-                customer sees and the file they keep cannot disagree — and an
+                customer sees and the file they keep cannot disagree â€” and an
                 unrecorded figure reads as missing rather than as GH?0.00. */}
             <div><dt>Total charged</dt><dd>{receiptCell(receipt.totalCharged)}</dd></div>
             <div><dt>Water seller</dt><dd>{receiptCell(receipt.sellerShare)}</dd></div>
@@ -226,7 +226,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
           <ul>
             {history.slice(0, 5).map((row) => (
               <li key={row.reference}>
-                <span>{row.reference} · {receiptCell(row.totalCharged)}</span>
+                <span>{row.reference} Â· {receiptCell(row.totalCharged)}</span>
                 <button className="text-button" type="button" onClick={() => downloadReceipt(row)}>Download</button>
               </li>
             ))}
