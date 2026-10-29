@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 /**
  * Check what the deployed Nautica actually answers.
  *
@@ -315,7 +315,7 @@ main();
 try {
   readFileSync('dist/index.html', 'utf8');
 } catch (error) {
-  console.error( + "" + 'Failed to read build output: ' + "" + );
+  console.error('Failed to read build output:', error.message);
   process.exit(1);
 }
 
@@ -344,4 +344,3 @@ const ROUTES = {
   '/notifications/read': { fn: 'notifications', action: 'read' },
 };
 
-// Alex K.

@@ -28,7 +28,7 @@ test("the fabricated claims it hunts for are ones the app removed", async () => 
   expect(checker).toMatch(/this demo workspace/);
   expect(checker).toMatch(/18,540/);
   expect(checker).toMatch(/4,820/);
-  expect(checker).toMatch(/Alex K\./);
+  expect(checker).toMatch(/Alex K\\./);
 });
 
 test("both hosting configs set the same security headers", async () => {
