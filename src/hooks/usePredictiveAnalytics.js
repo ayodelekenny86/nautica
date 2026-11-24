@@ -20,6 +20,10 @@ export function usePredictiveAnalytics({ orders, customers = [], driverPositions
   // Analyze customer order patterns
   const customerMetrics = useMemo(() => {
     const metrics = new Map();
+    // Read the clock once per derivation rather than once per customer.
+    // eslint-disable-next-line react-hooks/purity -- recency is measured from now; captured once so every row agrees.
+    const now = Date.now();
+    
     
     orders.forEach(order => {
       const customerId = order.customerId || order.phone || order.email || 'anonymous';
@@ -49,7 +53,7 @@ export function usePredictiveAnalytics({ orders, customers = [], driverPositions
       const daysSinceFirst = (new Date(m.lastOrder) - new Date(m.firstOrder)) / (1000 * 60 * 60 * 24);
       m.avgOrderValue = m.orders > 0 ? m.totalRevenue / m.orders : 0;
       m.frequency = daysSinceFirst > 0 ? m.orders / (daysSinceFirst / 30) : m.orders; // orders per month
-      m.daysSinceLastOrder = (Date.now() - new Date(m.lastOrder).getTime()) / (1000 * 60 * 60 * 24);
+      m.daysSinceLastOrder = (now - new Date(m.lastOrder).getTime()) / (1000 * 60 * 60 * 24);
       m.regions = Array.from(m.regions);
     });
     
@@ -68,7 +72,7 @@ export function usePredictiveAnalytics({ orders, customers = [], driverPositions
     };
     
     const predictions = customerMetrics.map(m => {
-      let segment = 'new';
+      let segment;
       if (m.orders >= 10 && m.frequency >= 2 && m.daysSinceLastOrder < 30) segment = 'vip';
       else if (m.orders >= 5 && m.frequency >= 1 && m.daysSinceLastOrder < 45) segment = 'loyal';
       else if (m.orders >= 3 && m.daysSinceLastOrder < 60) segment = 'regular';

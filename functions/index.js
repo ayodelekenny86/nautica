@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Nautica server.
  *
  * Three responsibilities, and the boundary between them is the point of this
@@ -9,7 +9,7 @@
  *   2. It owns the price of an order. The browser sends *what the customer
  *      wants* (volume, location, contact); the server decides *what it costs*
  *      and stores that. If the client could set the amount it would simply
- *      claim a GH¢300 order is GH¢1.
+ *      claim a GH₵300 order is GH₵1.
  *   3. It decides whether money arrived, by asking Paystack and comparing the
  *      answer to the order it stored. The browser's word is never evidence.
  *

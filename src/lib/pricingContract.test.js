@@ -13,7 +13,7 @@ import * as client from './money.js';
  * that means they can drift, and a drift here is a customer being quoted one figure
  * and charged another.
  *
- * These tests pin both halves: that the customer pays GH¢300, and that all three
+ * These tests pin both halves: that the customer pays GH₵300, and that all three
  * implementations agree.
  *
  * The third copy used to be outside this file. It had already drifted — its
@@ -28,7 +28,7 @@ const COPIES = [
   ['supabase edge (supabase/functions/_lib/pricing.ts)', edge],
 ];
 
-describe('the customer pays GH¢300, inclusive of the 50% discount', () => {
+describe('the customer pays GH₵300, inclusive of the 50% discount', () => {
   test('the server charges 300, not 330', () => {
     const priced = server.priceOrder({});
     expect(priced.listMinor).toBe(60000);

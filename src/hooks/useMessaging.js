@@ -182,13 +182,18 @@ export function useMessaging({ currentUser, currentRole, onNotice }) {
     return conv;
   }, [getOrCreateConversation]);
 
-  // Send quick template messages
-  const sendTemplate = useCallback((conversationId, template, order) => {
+  // Send quick template messages.
+  //
+  // `sendTemplate(id, 'delayed', order, { reason: 'flooded road' })` used to be
+  // impossible: the delay template interpolated an undefined `metadata`, so
+  // choosing it threw a ReferenceError and the chat panel went blank. The reason
+  // is now an explicit, optional argument.
+  const sendTemplate = useCallback((conversationId, template, order, metadata = {}) => {
     const templates = {
       'on_my_way': `I'm on my way to deliver your order ${order?.code || ''}. ETA: ${order?.eta || 'calculating...'}`,
       'arrived': `I've arrived at ${order?.location || 'the delivery location'}. Please come out with your delivery code.`,
       'need_code': `Please provide your delivery code to complete the delivery for order ${order?.code || ''}.`,
-      'delayed': `Your delivery ${order?.code || ''} is delayed due to ${metadata?.reason || 'traffic'}. New ETA: ${order?.eta || 'TBD'}`,
+      'delayed': `Your delivery ${order?.code || ''} is delayed due to ${metadata.reason || 'traffic'}. New ETA: ${order?.eta || 'TBD'}`,
       'confirm_delivery': `Please confirm receipt of order ${order?.code || ''}. Your delivery code is required.`,
     };
     const text = templates[template] || template;

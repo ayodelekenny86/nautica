@@ -121,7 +121,7 @@ async function probeSite(site) {
   // Failures are labelled with the host, so a summary listing two sites does not
   // show the same check name twice with nothing to tell them apart.
   const origin = new URL(site).host;
-  let html = '';
+  let html;
 
   try {
     const response = await fetch(site, { redirect: 'follow' });
@@ -262,7 +262,7 @@ async function probeFunctions() {
     const missing = [];
     let firstDetail = '';
     for (const route of group) {
-      let status = 0;
+      let status;
       let detail = '';
       try {
         const response = await fetch(`${supabaseUrl}/functions/v1/${fn}/${route.action}`, {

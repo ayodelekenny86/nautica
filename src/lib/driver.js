@@ -155,7 +155,9 @@ export function driverStats(driver, orders, ratings = []) {
   const completed = active.filter((order) => order.status !== 'Awaiting payment');
   const available = active.filter((order) => order.status === 'Awaiting payment');
 
-  let rated = [];
+  // Each branch assigns `rated` exactly once; the initialiser only existed to
+  // declare it, so it could be written twice depending on the path.
+  let rated;
   if (ratings.length) {
     const ratedOrderIds = new Set(ratings.map((r) => r.orderId));
     rated = delivered.filter((order) => ratedOrderIds.has(order.id));

@@ -47,7 +47,10 @@ function Stepper({ status }) {
   );
 }
 
-function DriverJobCard({ order, onAccept, onAdvance, onComplete, onReject, busyOrderId, onContact }) {
+function DriverJobCard({ order, onAccept, onAdvance, onComplete, onReject, busyOrderId, onContact, readOnly = false, readOnlyNote }) {
+  // A card the viewer may not act on is view-only: no accept, advance or close.
+  // The dashboard sets this for an account with no roster entry (an operator
+  // looking in), so nobody progresses another driver's delivery from here.
   const action = advanceAction(order.status);
   const busy = busyOrderId === order.id;
   const message = orderMessage({
@@ -78,7 +81,7 @@ function DriverJobCard({ order, onAccept, onAdvance, onComplete, onReject, busyO
       <Stepper status={order.status} />
 
       <div className="driver-job-actions">
-        {order.status === 'Awaiting payment' && (
+        {order.status === 'Awaiting payment' && !readOnly && (
           <>
             <button className="primary-button" type="button" onClick={() => onAccept(order.id)} disabled={busy}>
               Accept job
@@ -88,17 +91,22 @@ function DriverJobCard({ order, onAccept, onAdvance, onComplete, onReject, busyO
             </button>
           </>
         )}
-        {action && order.status !== 'En Route' && (
+        {action && order.status !== 'En Route' && !readOnly && (
           <button className="primary-button" type="button" onClick={() => onAdvance(order.id, action.status)} disabled={busy}>
             {action.label}
           </button>
         )}
-        {order.status === 'En Route' && (
+        {order.status === 'En Route' && !readOnly && (
           <button className="primary-button" type="button" onClick={() => onComplete(order.id)} disabled={busy}>
             Enter delivery code
           </button>
         )}
-        {order.status === 'Delivered' && (
+        {readOnly && (
+          <span className="driver-job-done">
+            {readOnlyNote ?? 'Read-only: this job belongs to the assigned driver.'}
+          </span>
+        )}
+        {!readOnly && order.status === 'Delivered' && (
           <span className="driver-job-done">Delivered. {formatCedi(order.driverReceives ?? 0)} earned.</span>
         )}
         <ContactButtons
@@ -113,19 +121,19 @@ function DriverJobCard({ order, onAccept, onAdvance, onComplete, onReject, busyO
   );
 }
 
-function EarningsBreakdown({ driver, orders }) {
+function EarningsBreakdown({ driver, orders, now }) {
   const mine = driverOrders(driver, orders);
   const delivered = mine.filter((o) => o.status === 'Delivered');
   
-  const weekly = delivered.filter((o) => {
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return new Date(o.createdAt || 0) > weekAgo;
-  });
-  
-  const monthly = delivered.filter((o) => {
-    const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return new Date(o.createdAt || 0) > monthAgo;
-  });
+  // One clock reading for the whole panel, supplied by the dashboard so that
+  // every figure on the screen is measured against the same instant. Reading
+  // Date.now() here would make the render impure, and two earned figures could
+  // be computed against different instants.
+  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+  const weekly = delivered.filter((o) => new Date(o.createdAt || 0).getTime() > weekAgo);
+  const monthly = delivered.filter((o) => new Date(o.createdAt || 0).getTime() > monthAgo);
 
   const totalEarnings = delivered.reduce((s, o) => s + (o.driverReceives ?? 0), 0);
   const weeklyEarnings = weekly.reduce((s, o) => s + (o.driverReceives ?? 0), 0);
@@ -261,7 +269,9 @@ export default function DriverDashboard({
   const [activeTab, setActiveTab] = useState('available');
   const [showCompleted, setShowCompleted] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const [lastSync, setLastSync] = useState(Date.now());
+  // Initialised lazily: calling Date.now() in the render body would be an impure
+  // render, and it is only needed once, when the panel first mounts.
+  const [lastSync, setLastSync] = useState(() => Date.now());
 
   useEffect(() => {
     const handleOnline = () => { setOffline(false); setLastSync(Date.now()); trackEvent(EVENTS.ONLINE_RESTORED); };
@@ -279,6 +289,11 @@ export default function DriverDashboard({
   // the collection carries the full breakdown and is the authoritative source.
   const { summary: driverRatingSummary, loading: ratingsLoading, refresh: refreshRatings } = useDriverRatings(driver?.id);
 
+  // The feed and the stats bar describe the signed-in driver. Without a roster
+  // match there is no such driver, so everything below is read-only rather than
+  // an empty screen that reads as a quiet day.
+  const viewOnly = !driver;
+
   // The ratings collection is the authoritative source for what buyers thought.
   // Pass it through so the stats bar and the ratings tab show the same number
   // instead of two averages that can disagree.
@@ -288,64 +303,86 @@ export default function DriverDashboard({
   const active = mine.filter((o) => ['Assigned', 'Picked Up', 'En Route'].includes(o.status));
   const completed = mine.filter((o) => o.status === 'Delivered');
 
-  if (!driver) {
-    const isSocialDriver = driverIdentifier?.includes('@') && linkDriverPhone;
-    if (!isSocialDriver) {
-      return (
-        <section className="access-gate panel" data-testid="driver-not-rostered">
-          <span className="access-lock">⚑</span>
-          <p className="eyebrow">Driver workspace</p>
-          <h1>Not on the driver roster yet.</h1>
-          <p>This account is signed in as a driver, but its number is not on the fleet roster.</p>
-          <p><strong>Signed in as</strong> {driverName || driverIdentifier || 'this account'}</p>
-        </section>
-      );
-    }
-    return (
-      <section className="access-gate panel" data-testid="driver-link-phone">
-        <span className="access-lock">⇢</span>
-        <p className="eyebrow">Link your driver phone</p>
-        <h1>Sign in to see your deliveries.</h1>
-        <p>You signed in with an email. Enter the driver phone Ops registered for you.</p>
-        <form className="driver-link-form" onSubmit={async (e) => {
-          e.preventDefault();
-          const input = e.target.elements.driverPhone;
-          const result = await linkDriverPhone(input.value.trim());
-          if (!result?.ok) showNotice(result?.error || 'Could not link that phone number.');
-        }}>
-          <input aria-label="Driver phone number" name="driverPhone" placeholder="e.g. 0545009046" inputMode="tel" />
-          <button className="primary-button full" type="submit">Link phone →</button>
-        </form>
-      </section>
-    );
-  }
-
+  // Every hook must run before any early return. `tabCounts` used to sit below
+  // the two `!driver` returns, so it was called on some renders and not others —
+  // signing in as a rostered driver after the "not on the roster" screen threw
+  // "Rendered more hooks than during the previous render".
   const tabCounts = useMemo(() => ({
     available: available.length,
     active: active.length,
     completed: completed.length,
     earnings: stats.completed,
     ratings: driverRatingSummary?.count || 0,
-  }), [available, active, completed, stats.completed, driverRatingSummary?.count]);
+  }), [available.length, active.length, completed.length, stats.completed, driverRatingSummary?.count]);
 
+  const tabs = (
+    <nav className="mobile-bottom-nav" aria-label="Driver tabs">
+      {TAB_LABELS.map((tab) => (
+        <button
+          key={tab.id}
+          className={`mobile-nav-tab ${activeTab === tab.id ? 'active' : ''}`}
+          type="button"
+          aria-current={activeTab === tab.id ? 'page' : undefined}
+          onClick={() => setActiveTab(tab.id)}
+          disabled={!driver && tab.id !== 'available' && tab.id !== 'active' && tab.id !== 'completed'}
+        >
+          <span className="nav-icon" aria-hidden="true">{tab.icon}</span>
+          <span className="nav-label">{tab.label}</span>
+          {tabCounts[tab.id] > 0 && <span className="nav-badge" data-testid="nav-badge">{tabCounts[tab.id]}</span>}
+        </button>
+      ))}
+    </nav>
+  );
+
+  if (!driver) {
+    const isSocialDriver = driverIdentifier?.includes('@') && linkDriverPhone;
+    if (!isSocialDriver) {
+      return (
+        <div className="driver-workspace">
+          {tabs}
+          <section className="access-gate panel" data-testid="driver-not-rostered">
+            <span className="access-lock">⚑</span>
+            <p className="eyebrow">Driver workspace</p>
+            <h1>Not on the driver roster yet.</h1>
+            <p>This account is signed in as a driver, but its number is not on the fleet roster.</p>
+            <p><strong>Signed in as</strong> {driverName || driverIdentifier || 'this account'}</p>
+          </section>
+        </div>
+      );
+    }
+    return (
+      <div className="driver-workspace">
+        <section className="access-gate panel" data-testid="driver-link-phone">
+          <span className="access-lock">⇢</span>
+          <p className="eyebrow">Link your driver phone</p>
+          <h1>Sign in to see your deliveries.</h1>
+          <p>You signed in with an email. Enter the driver phone Ops registered for you.</p>
+          <form className="driver-link-form" onSubmit={async (e) => {
+            e.preventDefault();
+            const input = e.target.elements.driverPhone;
+            const result = await linkDriverPhone(input.value.trim());
+            if (!result?.ok) showNotice(result?.error || 'Could not link that phone number.');
+          }}>
+            <input aria-label="Driver phone number" name="driverPhone" placeholder="e.g. 0545009046" inputMode="tel" />
+            <button className="primary-button full" type="submit">Link phone →</button>
+          </form>
+        </section>
+      </div>
+    );
+  }
+
+  // An operator can switch into this workspace, but they hold no roster entry,
+  // so the feed resolves to no driver. The job cards then render read-only
+  // rather than offering to accept or close someone else's delivery.
   return (
     <div className="driver-workspace">
+      <div className="notice" role="status">
+        <strong>Ops view.</strong> This account is not on the driver roster. Job actions are disabled
+        below because each job belongs to the driver it is assigned to.
+      </div>
+
       {/* Mobile bottom navigation */}
-      <nav className="mobile-bottom-nav" aria-label="Driver tabs">
-        {TAB_LABELS.map((tab) => (
-          <button
-            key={tab.id}
-            className={`mobile-nav-tab ${activeTab === tab.id ? 'active' : ''}`}
-            type="button"
-            aria-current={activeTab === tab.id ? 'page' : undefined}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="nav-icon" aria-hidden="true">{tab.icon}</span>
-            <span className="nav-label">{tab.label}</span>
-            {tabCounts[tab.id] > 0 && <span className="nav-badge" data-testid="nav-badge">{tabCounts[tab.id]}</span>}
-          </button>
-        ))}
-      </nav>
+      {tabs}
 
       {/* Offline banner */}
       {offline && (
@@ -411,6 +448,7 @@ export default function DriverDashboard({
                   onComplete={onComplete}
                   onReject={onReject}
                   busyOrderId={busyOrderId}
+                  readOnly={viewOnly}
                 />
               ))}
             </div>
@@ -439,6 +477,7 @@ export default function DriverDashboard({
                   onComplete={onComplete}
                   onReject={onReject}
                   busyOrderId={busyOrderId}
+                  readOnly={viewOnly}
                 />
               ))}
             </div>
@@ -471,6 +510,7 @@ export default function DriverDashboard({
                     onComplete={onComplete}
                     onReject={onReject}
                     busyOrderId={busyOrderId}
+                    readOnly={viewOnly}
                   />
                 ))}
               </div>
@@ -479,8 +519,8 @@ export default function DriverDashboard({
         </section>
       )}
 
-      {activeTab === 'earnings' && driver && (
-        <EarningsBreakdown driver={driver} orders={orders} />
+      {activeTab === 'earnings' && (
+        <EarningsBreakdown driver={driver} orders={orders} now={lastSync} />
       )}
 
       {activeTab === 'ratings' && (

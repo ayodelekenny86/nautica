@@ -66,7 +66,7 @@ export function checkSettlement({ transaction, order, currency = 'GHS' }) {
   }
 
   // Amount is compared in integer pesewas and must match exactly. This is what
-  // stops a GH¢1.00 transaction from being applied to a GH¢300.00 order. A
+  // stops a GH₵1.00 transaction from being applied to a GH₵300.00 order. A
   // partial payment is not a settled payment and must not be treated as one.
   if (!Number.isInteger(order.chargedMinor) || order.chargedMinor <= 0) {
     return { settled: false, reason: 'order_amount_invalid' };

@@ -152,7 +152,7 @@ export const TERMINAL_STATUSES = new Set(['success', 'failed', 'abandoned', 'rev
  *
  * Deliberately strict about scale. Accepting an amount that "looks right"
  * whether it arrived in cedi or pesewas would mean 30,000.00 also satisfies a
- * GH¢30,000.00 order, so a large payment could settle a small one. A value with
+ * GH₵30,000.00 order, so a large payment could settle a small one. A value with
  * precision finer than a pesewa is a different charge, not a rounding artefact,
  * and is refused rather than rounded into agreement.
  */

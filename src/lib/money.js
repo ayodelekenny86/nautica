@@ -5,7 +5,7 @@
  *
  * 1. All arithmetic runs in integer minor units (Ghanaian pesewas, 100 per
  *    cedi). Floating point money loses pesewas: three 33.33% splits of
- *    GH¢10.00 do not sum back to GH¢10.00, and a ledger that drifts is a
+ *    GH₵10.00 do not sum back to GH₵10.00, and a ledger that drifts is a
  *    ledger nobody can reconcile or sell.
  *
  * 2. Allocation uses the largest-remainder (Hamilton) method, so the parts
@@ -53,23 +53,23 @@ export function formatCedi(minor) {
 /**
  * The default commercial plan.
  *
- * The business rule this file exists to satisfy: **the customer pays GH¢300,
- * inclusive of the 50% discount.** A GH¢600 list price discounted by 50% is
- * GH¢300, and that is the amount actually taken from the buyer.
+ * The business rule this file exists to satisfy: **the customer pays GH₵300,
+ * inclusive of the 50% discount.** A GH₵600 list price discounted by 50% is
+ * GH₵300, and that is the amount actually taken from the buyer.
  *
  * `buyerServiceCharge` is therefore 0. It used to be 10%, which was added on top
- * of the discounted price and made the customer pay GH¢330 — the discount was
+ * of the discounted price and made the customer pay GH₵330 — the discount was
  * advertised as 50% off and then a fee was charged on the discounted figure, so
  * the headline price was not the price. Adding the fee also meant the shares no
- * longer described where the money came from: the platform took 40% of GH¢300
- * plus a further GH¢30 that was never part of any order value.
+ * longer described where the money came from: the platform took 40% of GH₵300
+ * plus a further GH₵30 that was never part of any order value.
  *
- * With the charge at 0 the arithmetic is exact and reconciles: of the GH¢300
- * taken, the seller receives GH¢135, the driver GH¢45, and the platform GH¢120,
- * which sums back to GH¢300 with nothing unaccounted for.
+ * With the charge at 0 the arithmetic is exact and reconciles: of the GH₵300
+ * taken, the seller receives GH₵135, the driver GH₵45, and the platform GH₵120,
+ * which sums back to GH₵300 with nothing unaccounted for.
  *
  * The field is kept because it is a real pricing lever an operator can set, not
- * because it is used by default. `money.test.js` pins the GH¢300 contract, so
+ * because it is used by default. `money.test.js` pins the GH₵300 contract, so
  * raising it will fail the suite rather than quietly charging buyers more.
  */
 export const DEFAULT_SPLIT = {

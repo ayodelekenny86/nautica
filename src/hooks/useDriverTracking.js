@@ -12,12 +12,17 @@ import { getFleet } from '../lib/fleet';
  * - Geofencing and zone monitoring
  * - Trip history and performance metrics
  */
+// Starting positions, keyed by the ids the fleet roster actually uses.
+//
+// These were `drv-1`..`drv-5`, which match no driver in `DEMO_DRIVERS`, so every
+// lookup by driver id missed and the map only worked when a view seeded
+// positions itself. Keyed on the roster ids, a fresh workspace places each
+// rostered driver at their base and nothing has to invent coordinates later.
 const INITIAL_DRIVER_LOCATIONS = {
-  'drv-1': { location: 'Accra Central', lat: 5.5600, lng: -0.2057, eta: '5 min', updatedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), status: 'en_route' },
-  'drv-2': { location: 'East Legon', lat: 5.6143, lng: -0.1675, eta: '12 min', updatedAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(), status: 'en_route' },
-  'drv-3': { location: 'Spintex Road', lat: 5.6037, lng: -0.0783, eta: 'Available', updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), status: 'online' },
-  'drv-4': { location: 'Tema', lat: 5.6698, lng: -0.0166, eta: '8 min', updatedAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(), status: 'en_route' },
-  'drv-5': { location: 'Madina', lat: 5.6833, lng: -0.1667, eta: 'Offline', updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), status: 'offline' },
+  drv_kojo: { location: 'East Legon', lat: 5.6143, lng: -0.1675, eta: 'Available', updatedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), status: 'online' },
+  drv_ama: { location: 'Cantonments', lat: 5.5750, lng: -0.1780, eta: 'Available', updatedAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(), status: 'online' },
+  drv_yaw: { location: 'Tema', lat: 5.6698, lng: -0.0166, eta: 'Available', updatedAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(), status: 'online' },
+  drv_aba: { location: 'Osu', lat: 5.5560, lng: -0.1800, eta: 'Offline', updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), status: 'offline' },
 };
 
 const ZONES = [
@@ -50,8 +55,16 @@ function getZoneForLocation(lat, lng) {
 
 export function useDriverTracking({ orders, sellerProfile }) {
   const [driverLocations, setDriverLocations] = useState(() => {
-    const stored = localStorage.getItem('aq_driver_locations');
-    return stored ? JSON.parse(stored) : INITIAL_DRIVER_LOCATIONS;
+    // Start from the starting positions and let a stored snapshot override them.
+    // Replacing outright meant anyone who opened the app before the ids were
+    // corrected kept a stored copy keyed on drivers that no longer exist, and
+    // never saw a marker on the map again.
+    try {
+      const stored = localStorage.getItem('aq_driver_locations');
+      return stored ? { ...INITIAL_DRIVER_LOCATIONS, ...JSON.parse(stored) } : INITIAL_DRIVER_LOCATIONS;
+    } catch {
+      return INITIAL_DRIVER_LOCATIONS;
+    }
   });
   const [driverStatuses, setDriverStatuses] = useState({});
   const [tripHistory, setTripHistory] = useState(() => {
@@ -70,8 +83,16 @@ export function useDriverTracking({ orders, sellerProfile }) {
     localStorage.setItem('aq_trip_history', JSON.stringify(tripHistory));
   }, [tripHistory]);
 
-  // Get fleet data
-  const { drivers } = getFleet();
+  // Get fleet data.
+  //
+  // Read once, not on every render. `getFleet()` returns a freshly built array
+  // each call, so as a render-body value it changed identity on every render and
+  // every downstream `useMemo`/`useCallback` keyed on `drivers` was invalidated
+  // each time. That cascaded into `useLoadBalancing`, which set new zone-load
+  // state from those callbacks — an endless render loop that made the whole
+  // tracking page hang before it painted a frame.
+  const [fleetDrivers] = useState(() => getFleet().drivers);
+  const drivers = fleetDrivers;
 
   // Merge fleet data with live locations
   const driversWithLocation = useMemo(() => {

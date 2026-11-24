@@ -49,8 +49,13 @@ export function useLoadBalancing({ orders, driverPositions = {}, onNotice }) {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Get fleet data
-  const { drivers } = getFleet();
+  // Get fleet data.
+  //
+  // Read once. `getFleet()` builds a new array on every call, so calling it in the
+  // render body gave `drivers` a new identity each render and invalidated every
+  // `useMemo`/`useCallback` keyed on it — which is one half of the render loop
+  // that hung the tracking page.
+  const [drivers] = useState(() => getFleet().drivers);
 
   // Calculate zone loads from pending/active orders
   const calculateZoneLoads = useCallback(() => {
@@ -162,6 +167,9 @@ export function useLoadBalancing({ orders, driverPositions = {}, onNotice }) {
 
   // Generate rebalancing suggestions
   const generateRebalancingSuggestions = useCallback(() => {
+    // Suggestions are identified by zone pair and kind only. Timestamps in the
+    // id made every recalculation produce a new object, so an effect keyed on
+    // them re-ran forever and a dismissed suggestion came back a moment later.
     const suggestions = [];
     const criticalZones = zoneLoads.filter(z => z.pressure === 'critical');
     const lowZones = zoneLoads.filter(z => z.pressure === 'low' && z.availableDrivers > 0);
@@ -170,7 +178,7 @@ export function useLoadBalancing({ orders, driverPositions = {}, onNotice }) {
       lowZones.forEach(lowZone => {
         if (lowZone.availableDrivers > 0) {
           suggestions.push({
-            id: `rebal-${criticalZone.zoneId}-${lowZone.zoneId}-${Date.now()}`,
+            id: `rebal-${criticalZone.zoneId}-${lowZone.zoneId}`,
             type: 'move_driver',
             fromZone: lowZone.zoneId,
             toZone: criticalZone.zoneId,
@@ -186,7 +194,7 @@ export function useLoadBalancing({ orders, driverPositions = {}, onNotice }) {
     const highPressureZones = zoneLoads.filter(z => z.pressure === 'high' || z.pressure === 'critical');
     if (highPressureZones.length >= 2 && !surgeMode) {
       suggestions.push({
-        id: `rebal-surge-${Date.now()}`,
+        id: 'rebal-surge',
         type: 'activate_surge',
         zones: highPressureZones.map(z => z.zoneId),
         reason: `${highPressureZones.length} zones under high pressure`,
@@ -271,6 +279,7 @@ export function useLoadBalancing({ orders, driverPositions = {}, onNotice }) {
     activateSurge,
     fleetSummary,
     refreshLoads,
+    applyRebalancing,
     loading,
     lastUpdated,
   };

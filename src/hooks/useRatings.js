@@ -183,19 +183,22 @@ export function useDriverRatings(driverId) {
   useEffect(() => {
     if (driverId) {
       setSummary(getDriverSummary(driverId));
-    } else {
-      // No driverId: return every rating in the collection so a fleet view can
-      // look up any driver's reputation without mounting a hook per driver.
-      setSummary({
-        averages: computeAverages(ratings),
-        distribution: computeDistribution(ratings),
-        count: ratings.length,
-        ratings,
-      });
     }
-  }, [driverId, getDriverSummary, ratings]);
+  }, [driverId, getDriverSummary]);
 
-  return { summary, loading, error, refresh };
+  // No driverId: hand the fleet view every rating so it can look up any driver's
+  // reputation without mounting a hook per driver. Derived rather than copied
+  // into state: writing a new object to state from inside the effect re-ran the
+  // effect on every render (the object was never equal to the last one), which
+  // was an infinite render loop for the whole ops tracking page.
+  const fleetSummary = useMemo(() => (driverId ? null : {
+    averages: computeAverages(ratings),
+    distribution: computeDistribution(ratings),
+    count: ratings.length,
+    ratings,
+  }), [driverId, ratings]);
+
+  return { summary: driverId ? summary : fleetSummary, loading, error, refresh };
 }
 
 export function useOrderRating(orderId, buyerId) {

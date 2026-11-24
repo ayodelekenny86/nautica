@@ -7,6 +7,7 @@ import { createOrder, toServerOrderRow } from '../lib/payments';
 import { allocate, formatCedi, DEFAULT_PRICING, DEFAULT_SPLIT, quotePrice } from '../lib/money';
 import { supabase, supabaseUrl, anonKey, writeResult } from '../lib/supabase';
 import { gallonsFromLabel, litresFromLabel } from '../lib/volume';
+import { sanitizeText, sanitizeEmail, sanitizePhone } from '../lib/sanitize';
 import { trackEvent, EVENTS } from '../lib/analytics';
 
 const toLitres = litresFromLabel;
@@ -161,13 +162,25 @@ export function useBooking({ email, buyerPhone = '', onNotice, notify, pricing =
 
     return () => {
       clearTimeout(deadline);
-      try { supabase.removeChannel(channel); } catch {}
+      try { supabase.removeChannel(channel); } catch { /* nothing to unsubscribe from */ }
     };
   }, []);
 
+  // The two free-text fields are sanitised as they are typed, not only on submit.
+  // Both are carried onto the order and the driver's job sheet, so a control
+  // character or an over-long paste would end up in the record and, for the
+  // location, in the notification body. The dropdowns are fixed option lists and
+  // the volume label is parsed by `toLitres`, so they are left untouched.
+  const FREE_TEXT_FIELDS = {
+    location: (value) => sanitizeText(value, 160),
+    receiptEmail: (value) => sanitizeEmail(value),
+    whatsapp: (value) => sanitizePhone(value),
+  };
+
   const updateBooking = useCallback((event) => {
     const { name, value } = event.target;
-    setBooking((current) => ({ ...current, [name]: value }));
+    const clean = FREE_TEXT_FIELDS[name] ? FREE_TEXT_FIELDS[name](value) : value;
+    setBooking((current) => ({ ...current, [name]: clean }));
   }, []);
 
   const requestDelivery = useCallback(async (event) => {
@@ -181,7 +194,8 @@ export function useBooking({ email, buyerPhone = '', onNotice, notify, pricing =
       return;
     }
 
-    const { location, volume } = booking;
+    const { volume } = booking;
+    const location = sanitizeText(booking.location, 160);
     const volumeLitres = toLitres(volume);
     if (volumeLitres <= 0) {
       onNotice('Choose a tank size before booking.');
@@ -197,7 +211,7 @@ export function useBooking({ email, buyerPhone = '', onNotice, notify, pricing =
     //
     // Checked here rather than only at the server so the buyer is told what to do
     // before a round trip, and so the failure is not a raw error string.
-    const receiptEmail = booking.receiptEmail.trim().toLowerCase();
+    const receiptEmail = sanitizeEmail(booking.receiptEmail);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(receiptEmail)) {
       onNotice('Add the email address your receipt should go to. It is required to book.');
       return;

@@ -39,7 +39,7 @@ export function useInstitutionDashboard({ orders, onNotice }) {
     const saved = list('institutionBudget');
     if (saved.length) setBudget(saved[0]);
     // No seeded budget either. An institution that has not set a monthly limit
-    // should see GH₵0.00, not a GH¢15,000 plan nobody subscribed to.
+    // should see GH₵0.00, not a GH₵15,000 plan nobody subscribed to.
   }, []);
 
   // Update budget when orders change
@@ -257,12 +257,14 @@ export function useInstitutionDashboard({ orders, onNotice }) {
       .filter((s) => s.active && new Date(s.nextDelivery) >= now)
       .sort((a, b) => new Date(a.nextDelivery) - new Date(b.nextDelivery))
       .slice(0, 5);
-  }, [schedules]);
+  }, [schedules, refreshing]);
 
   // Water quality trends
   const qualityTrends = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity -- "the last 90 days" is relative to when the dashboard is opened.
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
     const recentRecords = qualityRecords
-      .filter(r => new Date(r.date) >= new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
+      .filter(r => new Date(r.date) >= cutoff)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
     
     if (recentRecords.length < 2) return null;

@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { formatCedi } from '../lib/money';
 import useDynamicPricing from '../hooks/useDynamicPricing';
 
-function PricingRuleCard({ rule, onToggle, onUpdate, sellerRanked }) {
+function PricingRuleCard({ rule, onToggle, onUpdate, sellerRanked, surge }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [config, setConfig] = useState(rule.config);
@@ -10,18 +10,16 @@ function PricingRuleCard({ rule, onToggle, onUpdate, sellerRanked }) {
   const isSurge = rule.type === 'surge';
   const isActive = rule.active;
 
+  // Every hook runs here, before any branch.
+  //
+  // `useState` and `useEffect` used to live inside `if (isSurge) { … }`, so a
+  // card rendered as a surge rule and re-used for another type changed its hook
+  // order between renders. The old effect also polled every five seconds to set
+  // a constant `{ active: false }`, which meant the surge tile claimed demand
+  // was normal no matter what the engine computed. The values come from the
+  // caller's `surge` reading now, and there is nothing to poll.
   if (isSurge) {
-    // Special rendering for surge rule - show current status
-    const [surgeData, setSurgeData] = useState({ active: false, multiplier: 1.0 });
-    
-    useEffect(() => {
-      // This would be connected to the hook's calculateSurgeMultiplier
-      const interval = setInterval(() => {
-        // In real app, this comes from the hook
-        setSurgeData({ active: false, multiplier: 1.0 });
-      }, 5000);
-      return () => clearInterval(interval);
-    }, []);
+    const surgeData = surge ?? { active: false, multiplier: 1 };
 
     return (
       <article className={`pricing-rule-card ${isActive ? 'active' : 'inactive'} ${surgeData.active ? 'surge-active' : ''}`}>
@@ -92,7 +90,7 @@ function PricingRuleCard({ rule, onToggle, onUpdate, sellerRanked }) {
       {expanded && (
         <div className="rule-details">
           {editing ? (
-            <RuleEditor rule={rule} config={config} onConfigChange={setConfig} onSave={() => { onUpdate(rule.id, config); setEditing(false); }} onCancel={() => { setConfig(rule.config); setEditing(false); }} />
+            <RuleEditor config={config} onSave={() => { onUpdate(rule.id, config); setEditing(false); }} onCancel={() => { setConfig(rule.config); setEditing(false); }} />
           ) : (
             <RulePreview rule={rule} config={config} onEdit={() => setEditing(true)} sellerRanked={sellerRanked} />
           )}
@@ -165,7 +163,7 @@ function RulePreview({ rule, config, onEdit, sellerRanked }) {
           <button className="text-button" onClick={onEdit}>Edit regions</button>
         </div>
       );
-    case 'seller_performance':
+    case 'seller_performance': {
       const topSellers = sellerRanked?.filter(s => (s.score || 0) >= (config.thresholdScore || 80)) || [];
       return (
         <div className="config-preview">
@@ -180,6 +178,7 @@ function RulePreview({ rule, config, onEdit, sellerRanked }) {
           <button className="text-button" onClick={onEdit}>Edit thresholds</button>
         </div>
       );
+    }
     default:
       return (
         <div className="config-preview">
@@ -190,7 +189,7 @@ function RulePreview({ rule, config, onEdit, sellerRanked }) {
   }
 }
 
-function RuleEditor({ rule, config, onConfigChange, onSave, onCancel }) {
+function RuleEditor({ config, onSave, onCancel }) {
   // Simplified editor - in real app would have proper forms per rule type
   return (
     <div className="rule-editor">
@@ -216,19 +215,21 @@ function getRuleDescription(rule) {
   }
 }
 
-function PriceCalculator({ calculatePrice, onNotice }) {
+function PriceCalculator({ calculatePrice }) {
   const [params, setParams] = useState({
     volumeGallons: 2000,
     region: 'Accra',
     loyaltyTier: 'Silver',
     sellerId: null,
   });
-  const [result, setResult] = useState(null);
 
-  useEffect(() => {
-    const r = calculatePrice(params);
-    setResult(r);
-  }, [calculatePrice, params]);
+  // Derived during render rather than pushed into state from an effect.
+  //
+  // The effect version called `setResult` on every render that had a new
+  // `calculatePrice` identity, which is every render, and re-rendered off its
+  // own output. `calculatePrice` is a pure function of the parameters, so
+  // deriving it gives the same answer with no second pass.
+  const result = useMemo(() => calculatePrice(params), [calculatePrice, params]);
 
   if (!result) return <div>Calculating...</div>;
 
@@ -299,12 +300,10 @@ function PriceCalculator({ calculatePrice, onNotice }) {
 export default function DynamicPricingConsole({ orders = [], sellerRanked = [], onNotice }) {
   const {
     rules,
-    activeSurge,
     calculatePrice,
     calculateSurgeMultiplier,
     toggleRule,
     updateRule,
-    addRule,
   } = useDynamicPricing({ orders, sellerRanked, onNotice });
 
   const [showCalculator, setShowCalculator] = useState(true);
@@ -341,6 +340,7 @@ export default function DynamicPricingConsole({ orders = [], sellerRanked = [], 
                 onToggle={toggleRule} 
                 onUpdate={updateRule} 
                 sellerRanked={sellerRanked}
+                surge={surge}
               />
             ))}
           </div>
@@ -348,7 +348,7 @@ export default function DynamicPricingConsole({ orders = [], sellerRanked = [], 
 
         {showCalculator && (
           <div className="calculator-section">
-            <PriceCalculator calculatePrice={calculatePrice} onNotice={onNotice} />
+            <PriceCalculator calculatePrice={calculatePrice} />
           </div>
         )}
       </div>

@@ -46,6 +46,12 @@ export default function MessagingPanel({
     ? messages.filter(m => m.conversationId === activeConversationId).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     : [];
 
+  // On mobile, show list by default, switch to chat when conversation selected.
+  // This must be declared before the effect that reads it: it sat below the
+  // focus effect, so the effect's dependency array dereferenced `isMobile` in
+  // its temporal dead zone and threw on first render.
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   // Focus management for mobile view transitions
   useEffect(() => {
     if (isMobile && !showList && chatRef.current) {
@@ -59,9 +65,6 @@ export default function MessagingPanel({
       searchInputRef.current.focus();
     }
   }, [newConvRole]);
-
-  // On mobile, show list by default, switch to chat when conversation selected
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   
   useEffect(() => {
     const handleResize = () => setShowList(window.innerWidth < 768);
@@ -107,7 +110,7 @@ export default function MessagingPanel({
       setShowList(false);
       setNewConvRole(null);
     }
-  }, [currentRole, startDriverChat, startBuyerChat, startSellerChat, getOrCreateConversation]);
+  }, [currentRole, startDriverChat, startBuyerChat, getOrCreateConversation, setActiveConversationId]);
 
   // Get available contacts based on role and orders
   const availableContacts = useMemo(() => {

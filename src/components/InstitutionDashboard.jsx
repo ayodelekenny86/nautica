@@ -128,14 +128,18 @@ export function InstitutionDashboard({ orders, showNotice }) {
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [showQualityForm, setShowQualityForm] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({
+  const [scheduleForm, setScheduleForm] = useState(() => ({
     name: '',
     frequency: 'weekly',
     day: 'Monday',
     volume: '2,000 gallons',
+    // The default delivery date is computed once, in the initialiser, rather
+    // than on every render: as a plain object literal it re-ran `Date.now()` and
+    // built a fresh `nextDelivery` string on each pass, so the next render never
+    // matched the previous one.
     nextDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     active: true,
-  });
+  }));
 
   function handleScheduleSubmit(event) {
     event.preventDefault();

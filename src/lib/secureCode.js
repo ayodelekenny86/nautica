@@ -267,9 +267,8 @@ export async function verifyToken(token, secret) {
 
   const [body, signature] = parts;
   const key = await hmacKey(secret);
-  const expected = await subtle.sign('HMAC', key, encoder.encode(body));
 
-  let ok = false;
+  let ok;
   try {
     ok = await subtle.verify('HMAC', key, fromBase64Url(signature), encoder.encode(body));
   } catch {

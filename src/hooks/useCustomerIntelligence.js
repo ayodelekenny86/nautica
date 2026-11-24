@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCedi } from '../lib/money';
+import { list, replaceAll } from '../lib/collections';
 
 const STORAGE_KEY = 'customer_intelligence';
 
@@ -9,12 +10,8 @@ function calculateRecency(lastOrderDate) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-function calculateFrequency(orders) {
-  return orders.length;
-}
-
-function calculateMonetary(orders) {
-  return orders.reduce((sum, o) => sum + (o.chargedMinor || 0), 0);
+function numberOr(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
 }
 
 function calculateRFMScore(recency, frequency, monetary) {
@@ -48,7 +45,7 @@ function predictChurn(customer, orders, allCustomers) {
   const isOverdue = expectedNextOrder && expectedNextOrder < new Date();
   const daysOverdue = isOverdue ? Math.floor((Date.now() - expectedNextOrder.getTime()) / (1000 * 60 * 60 * 24)) : 0;
   
-  const avgMonetary = customer.monetary / Math.max(1, customer.frequency);
+  const avgMonetary = customer.totalSpent / Math.max(1, customer.frequency);
   const monetaryTrend = orders.length >= 3 
     ? (orders.slice(-3).reduce((s, o) => s + (o.chargedMinor || 0), 0) / 3) / avgMonetary 
     : 1;
@@ -62,8 +59,10 @@ function predictChurn(customer, orders, allCustomers) {
   if (monetaryTrend < 0.7) churnRisk += 0.2;
   if (customer.frequency === 1 && daysSinceLastOrder > 30) churnRisk += 0.3;
   
-  const avgRecency = allCustomers.reduce((s, c) => s + calculateRecency(c.lastOrderDate), 0) / allCustomers.length;
-  if (daysSinceLastOrder > avgRecency * 2) churnRisk += 0.1;
+  const avgRecency = allCustomers.length > 0
+    ? allCustomers.reduce((s, c) => s + calculateRecency(c.lastOrderDate), 0) / allCustomers.length
+    : numberOr(daysSinceLastOrder, 0);
+  if (allCustomers.length > 0 && daysSinceLastOrder > avgRecency * 2) churnRisk += 0.1;
   
   return {
     riskScore: Math.min(1, churnRisk),
@@ -80,16 +79,20 @@ function predictChurn(customer, orders, allCustomers) {
 }
 
 function calculateLTV(customer, avgOrderValue, avgLifespanMonths = 12, discountRate = 0.1) {
-  const monthlyRevenue = (customer.monetary / Math.max(1, customer.frequency)) * (12 / Math.max(1, avgLifespanMonths));
-  const ltv = monthlyRevenue * avgLifespanMonths * (1 - discountRate);
-  return Math.round(ltv);
+  // Lifetime value is built from this customer's own spend and cadence.
+  //
+  // It used to read `customer.monetary`, a field no profile has ever carried,
+  // so every LTV was NaN and the ops summary summed NaN into a total. The
+  // value now comes from the same `totalSpent` the rest of the hook uses.
+  const monthlyRevenue = customer.totalSpent / Math.max(1, avgLifespanMonths);
+  return Math.round(monthlyRevenue * avgLifespanMonths * (1 - discountRate));
 }
 
 function detectAnomalies(customers) {
   const anomalies = [];
   
   const avgFrequency = customers.reduce((s, c) => s + c.frequency, 0) / customers.length;
-  const avgMonetary = customers.reduce((s, c) => s + c.monetary, 0) / customers.length;
+  const avgMonetary = customers.reduce((s, c) => s + c.totalSpent, 0) / customers.length;
   const avgRecency = customers.reduce((s, c) => s + calculateRecency(c.lastOrderDate), 0) / customers.length;
   
   customers.forEach(c => {
@@ -149,20 +152,30 @@ function detectAnomalies(customers) {
 
 export function useCustomerIntelligence({ 
   orders = [], 
-  customers = [], 
-  driverPositions = {},
-  onNotice 
 }) {
   const [customerProfiles, setCustomerProfiles] = useState(() => list(STORAGE_KEY));
   const [loading, setLoading] = useState(false);
+  // The profile list the re-derive effect last read. Kept in sync by an effect
+  // rather than assigned during render: writing a ref while rendering is not
+  // allowed in React's concurrent renderer, and this hook is consumed by pages
+  // that can be interrupted mid-render.
+  const profilesRef = useRef(customerProfiles);
 
   useEffect(() => {
-    const saved = list(STORAGE_KEY);
-    if (saved.length === 0 && orders.length > 0) {
-      const buyerOrders = orders.filter(o => o.buyerId);
+    profilesRef.current = customerProfiles;
+  }, [customerProfiles]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const seed = () => {
+      if (cancelled) return;
+      const saved = list(STORAGE_KEY);
+      if (saved.length > 0) return;
+      if (orders.length === 0) return;
+
       const buyerMap = new Map();
-      
-      buyerOrders.forEach(order => {
+      orders.filter(o => o.buyerId).forEach(order => {
         const id = order.buyerId;
         if (!buyerMap.has(id)) {
           buyerMap.set(id, {
@@ -186,34 +199,45 @@ export function useCustomerIntelligence({
         const profile = buyerMap.get(id);
         profile.orders.push(order);
         profile.totalSpent += order.chargedMinor || 0;
-        profile.totalVolume += parseInt(order.volume?.replace(/[^\d]/g, '')) || 0;
+        profile.totalVolume += parseInt(order.volume?.replace(/[^\d]/g, ''), 10) || 0;
         if (new Date(order.date) < new Date(profile.firstOrderDate)) profile.firstOrderDate = order.date;
         if (new Date(order.date) > new Date(profile.lastOrderDate)) profile.lastOrderDate = order.date;
       });
-      
+
       const profiles = Array.from(buyerMap.values()).map(p => ({
         ...p,
         frequency: p.orders.length,
         avgOrderValue: Math.round(p.totalSpent / Math.max(1, p.orders.length)),
         recency: calculateRecency(p.lastOrderDate),
       }));
-      
+
       replaceAll(STORAGE_KEY, profiles);
       setCustomerProfiles(profiles);
-    } else if (saved.length > 0) {
-      setCustomerProfiles(saved);
-    }
+    };
+
+    // Seeding is deferred out of the effect body: writing state synchronously
+    // here produced a second render on every orders change, and the group below
+    // is a plain derivation that does not need one.
+    Promise.resolve().then(seed);
+    return () => { cancelled = true; };
   }, [orders]);
 
+  // Re-derive each saved profile from the orders that exist now.
+  //
+  // `setCustomerProfiles` used to run unconditionally at the end of this effect,
+  // and `customerProfiles` was one of its dependencies — so every run wrote new
+  // state, which scheduled another run. It never settled. The effect now writes
+  // only when the derived values actually differ, and depends only on `orders`.
   useEffect(() => {
-    if (customerProfiles.length === 0) return;
-    
-    const updated = customerProfiles.map(profile => {
+    const current = profilesRef.current;
+    if (current.length === 0) return;
+
+    const updated = current.map(profile => {
       const customerOrders = orders.filter(o => o.buyerId === profile.id);
       const totalSpent = customerOrders.reduce((s, o) => s + (o.chargedMinor || 0), 0);
       const frequency = customerOrders.length;
-      const lastOrder = customerOrders.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-      
+      const lastOrder = [...customerOrders].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
       return {
         ...profile,
         orders: customerOrders,
@@ -224,10 +248,18 @@ export function useCustomerIntelligence({
         recency: calculateRecency(lastOrder?.date || profile.lastOrderDate),
       };
     });
-    
+
+    const changed = updated.some((p, i) => {
+      const before = current[i];
+      return before.totalSpent !== p.totalSpent
+        || before.frequency !== p.frequency
+        || before.recency !== p.recency;
+    });
+    if (!changed) return;
+
     setCustomerProfiles(updated);
     replaceAll(STORAGE_KEY, updated);
-  }, [orders, customerProfiles]);
+  }, [orders]);
 
   const enrichedCustomers = useMemo(() => {
     return customerProfiles.map(profile => {
@@ -246,7 +278,7 @@ export function useCustomerIntelligence({
         healthScore: Math.max(0, 100 - churn.riskScore * 100),
       };
     });
-  }, [customerProfiles, orders]);
+  }, [customerProfiles]);
 
   const segments = useMemo(() => {
     const counts = {};

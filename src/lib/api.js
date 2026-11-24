@@ -138,7 +138,9 @@ export async function apiRequest(path, { method = 'GET', body, signal, auth = nu
     // an expired quote and a 30-second gateway stall both read as "the network
     // is down", which sends people to the wrong fix.
     if (abort.signal.aborted && !signal?.aborted) {
-      throw new Error('The server took too long to answer. Please try again.');
+      const timeout = new Error('The server took too long to answer. Please try again.');
+      timeout.cause = error;
+      throw timeout;
     }
     throw error;
   } finally {
@@ -147,11 +149,13 @@ export async function apiRequest(path, { method = 'GET', body, signal, auth = nu
   }
 
   const text = await response.text();
-  let payload = {};
+  let payload;
   try {
     payload = text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error('The server returned an unreadable response.');
+  } catch (error) {
+    const unreadable = new Error('The server returned an unreadable response.');
+    unreadable.cause = error;
+    throw unreadable;
   }
 
   if (!response.ok) {

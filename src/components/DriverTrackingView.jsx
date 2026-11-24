@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { formatCedi } from '../lib/money';
 import useDriverTracking from '../hooks/useDriverTracking';
+import { seedFleet } from '../lib/fleet';
 import useLoadBalancing from '../hooks/useLoadBalancing';
 import useSmartAssignment from '../hooks/useSmartAssignment';
 import usePredictiveAnalytics from '../hooks/usePredictiveAnalytics';
@@ -84,15 +85,15 @@ function DriverCard({ driver, route, onViewRoute, driverRatings }) {
       </div>
 
       <div className="driver-track-stats">
-        <div><span>Speed:</span> <strong>{driver.speed} km/h</strong></div>
+        <div><span>Speed:</span> <strong>{driver.speed != null ? `${driver.speed} km/h` : 'Not reported'}</strong></div>
         <div><span>Heading:</span> <strong>{driver.heading ? `${Math.round(driver.heading)}°` : '—'}</strong></div>
-        <div><span>Last update:</span> <strong>{new Date(driver.lastUpdate).toLocaleTimeString()}</strong></div>
+        <div><span>Last update:</span> <strong>{driver.lastUpdate ? new Date(driver.lastUpdate).toLocaleTimeString() : 'Never'}</strong></div>
       </div>
 
       {driver.currentOrder && route && (
         <div className="route-summary">
           <div><span>To:</span> <strong>{route.destination}</strong></div>
-          <div><span>Distance:</span> <strong>{route.distance.toFixed(1)} km</strong></div>
+          <div><span>Distance:</span> <strong>{route.distance != null ? `${route.distance.toFixed(1)} km` : 'Not estimated'}</strong></div>
           <div><span>ETA:</span> <strong>{route.eta}</strong></div>
           <div><span>Progress:</span>
             <div className="progress-bar">
@@ -108,6 +109,13 @@ function DriverCard({ driver, route, onViewRoute, driverRatings }) {
 
       {!driver.currentOrder && driver.status === 'online' && (
         <p className="driver-idle">Waiting for assignment...</p>
+      )}
+
+      {/* An offline driver has no live position and no job, so there is nothing to
+          chart. The card used to end after "Last update", which read as a broken
+          panel rather than a driver who is simply off duty. */}
+      {!driver.currentOrder && driver.status === 'offline' && (
+        <p className="driver-idle">Offline — no live position reported.</p>
       )}
     </article>
   );
@@ -161,6 +169,14 @@ function OrderTrackingCard({ order, driverPosition, route, onViewRoute }) {
 }
 
 function MapView({ drivers, selectedRoute, onCloseRoute }) {
+  // Derived from this component's own `drivers` prop. It used to read
+  // `allDrivers`, which only exists in the parent's scope, so the first render
+  // threw a ReferenceError and the whole tracking page stayed blank.
+  const occupied = useMemo(() => {
+    const keys = new Set(drivers.map((d) => mapKeyFor(d.location)));
+    return keys;
+  }, [drivers]);
+
   return (
     <div className="map-container panel">
       <div className="map-header">
@@ -176,7 +192,11 @@ function MapView({ drivers, selectedRoute, onCloseRoute }) {
         {/* Simplified map representation - in production would use Mapbox/Leaflet */}
         <div className="map-grid">
           {Object.entries(LOCATION_LABELS).map(([key, label]) => (
-            <div key={key} className="map-location" style={{ gridArea: key }}>
+            <div
+              key={key}
+              className={`map-location${occupied.has(key) ? ' occupied' : ''}`}
+              style={{ left: `${LOCATION_POSITIONS[key].x}%`, top: `${LOCATION_POSITIONS[key].y}%` }}
+            >
               <span className="location-name">{label}</span>
             </div>
           ))}
@@ -186,8 +206,8 @@ function MapView({ drivers, selectedRoute, onCloseRoute }) {
               key={driver.driverId}
               driver={{
                 ...driver,
-                x: LOCATION_POSITIONS[normalizeLocationKey(driver.location)]?.x ?? 50,
-                y: LOCATION_POSITIONS[normalizeLocationKey(driver.location)]?.y ?? 50,
+                x: LOCATION_POSITIONS[mapKeyFor(driver.location)]?.x ?? 50,
+                y: LOCATION_POSITIONS[mapKeyFor(driver.location)]?.y ?? 50,
               }}
               onClick={() => {}}
             />
@@ -196,10 +216,10 @@ function MapView({ drivers, selectedRoute, onCloseRoute }) {
           {selectedRoute && (
             <RouteLine
               route={{
-                originX: LOCATION_POSITIONS[normalizeLocationKey(selectedRoute.origin)]?.x ?? 50,
-                originY: LOCATION_POSITIONS[normalizeLocationKey(selectedRoute.origin)]?.y ?? 50,
-                destX: LOCATION_POSITIONS[normalizeLocationKey(selectedRoute.destination)]?.x ?? 50,
-                destY: LOCATION_POSITIONS[normalizeLocationKey(selectedRoute.destination)]?.y ?? 50,
+                originX: LOCATION_POSITIONS[mapKeyFor(selectedRoute.origin)]?.x ?? 50,
+                originY: LOCATION_POSITIONS[mapKeyFor(selectedRoute.origin)]?.y ?? 50,
+                destX: LOCATION_POSITIONS[mapKeyFor(selectedRoute.destination)]?.x ?? 50,
+                destY: LOCATION_POSITIONS[mapKeyFor(selectedRoute.destination)]?.y ?? 50,
               }}
             />
           )}
@@ -215,7 +235,7 @@ function MapView({ drivers, selectedRoute, onCloseRoute }) {
           <div className="route-detail-stats">
             <div><span>Driver:</span> <strong>{selectedRoute.driver}</strong></div>
             <div><span>Vehicle:</span> <strong>{selectedRoute.vehicle}</strong></div>
-            <div><span>Distance:</span> <strong>{selectedRoute.distance.toFixed(1)} km</strong></div>
+            <div><span>Distance:</span> <strong>{selectedRoute.distance != null ? `${selectedRoute.distance.toFixed(1)} km` : 'Not estimated'}</strong></div>
             <div><span>ETA:</span> <strong>{selectedRoute.eta}</strong></div>
             <div><span>Progress:</span> <strong>{selectedRoute.progress}%</strong></div>
             <div><span>Status:</span> <strong>{selectedRoute.status}</strong></div>
@@ -243,20 +263,36 @@ const LOCATION_LABELS = {
   'adenta': 'Adenta',
 };
 
+// Percentage positions on the map canvas, for both the labels and the markers.
+// The CSS lays the map out absolutely from these same numbers (see
+// `.map-location` in App.css), so a label and the dot for the same locality
+// cannot drift apart. They previously did: the labels came from a separate
+// `grid-template-areas` box whose cells lined up with nothing, so "East Legon"
+// sat in one place and every East Legon driver was drawn somewhere else.
+//
+// The arrangement is schematic, not a survey, but it is not arbitrary either:
+// x is roughly west→east and y is roughly north→south, so a dot on the left of
+// the canvas is a driver west of one on the right. The previous grid put
+// Cantonments, East Legon and Tema on the same row, which drew three drivers
+// 20km apart as if they were in a line, and put Labadi below Osu when they are
+// neighbours.
 const LOCATION_POSITIONS = {
-  'east-legon': { x: 65, y: 35 },
-  'cantonments': { x: 45, y: 55 },
-  'osu': { x: 50, y: 60 },
-  'airport': { x: 55, y: 40 },
-  'tema': { x: 85, y: 70 },
-  'spintex': { x: 70, y: 55 },
-  'madina': { x: 70, y: 25 },
-  'abeka': { x: 40, y: 30 },
-  'achimota': { x: 35, y: 20 },
-  'dansoman': { x: 25, y: 65 },
-  'central': { x: 50, y: 50 },
-  'labadi': { x: 55, y: 70 },
-  'adenta': { x: 80, y: 20 },
+  // northern belt
+  'achimota':   { x: 12, y: 14 },
+  'abeka':      { x: 30, y: 14 },
+  'airport':    { x: 52, y: 16 },
+  'madina':     { x: 72, y: 14 },
+  'adenta':     { x: 89, y: 20 },
+  // central belt
+  'dansoman':   { x: 12, y: 46 },
+  'central':    { x: 34, y: 44 },
+  'cantonments': { x: 52, y: 50 },
+  'osu':        { x: 44, y: 62 },
+  'labadi':     { x: 60, y: 62 },
+  'east-legon': { x: 72, y: 46 },
+  // eastern corridor
+  'spintex':    { x: 78, y: 66 },
+  'tema':       { x: 90, y: 46 },
 };
 
 function normalizeLocationKey(location) {
@@ -268,18 +304,41 @@ function normalizeLocationKey(location) {
     .replace(/^-|-$/g, '');
 }
 
+/**
+ * The map key for a free-text address.
+ *
+ * The roster writes bases as "East Legon, Accra", which normalises to
+ * `east-legon-accra` and matched none of the keys above — so every marker fell
+ * back to the centre of the canvas and the whole fleet stacked on one dot. The
+ * place name is what matters, so the first known locality mentioned wins over
+ * the trailing city.
+ */
+function mapKeyFor(location) {
+  const normalized = normalizeLocationKey(location);
+  if (LOCATION_POSITIONS[normalized]) return normalized;
+  return Object.keys(LOCATION_POSITIONS).find((key) => normalized.includes(key)) ?? 'central';
+}
+
 export function DriverTrackingView({ orders, onNotice }) {
+  // The roster is seeded once, on first mount, the same way the rest of the app
+  // seeds its collections. Without it a fresh workspace has an empty fleet list
+  // and the map has nothing to place, which reads as "tracking is broken".
+  const [roster] = useState(() => seedFleet());
+
+  // Names match what `useDriverTracking` actually returns. The previous
+  // destructure invented `driverPositions`, `getActiveDrivers`, `getRoute`,
+  // `updateDriverPosition` and `setDriverStatus`, none of which exist, so every
+  // one of them was `undefined` and the first call threw. Nothing caught it
+  // because nothing rendered this view.
   const {
-    driverPositions,
-    trackingEnabled,
-    startTracking,
-    stopTracking,
-    getDriverPosition,
-    getActiveDrivers,
-    getRoute,
-    updateDriverPosition,
-    setDriverStatus,
-  } = useDriverTracking({ orders, onNotice });
+    drivers,
+    driverLocations,
+    onJobDrivers,
+  } = useDriverTracking({ orders, sellerProfile: {} });
+
+  // There is no tracking on/off switch in the hook — positions are already being
+  // read and persisted — so there is nothing for a start/stop button to toggle.
+  // The toolbar refreshes instead of pretending to start a feed that is not there.
 
   // Ratings per driver, so the fleet list shows reputation alongside live
   // position. Ops can see which drivers are well thought of without opening
@@ -287,19 +346,96 @@ export function DriverTrackingView({ orders, onNotice }) {
   const { summary: fleetRatings } = useDriverRatings(null);
 
   // Notifications for smart alerts
-  const { forRole, unreadCount, sync: notificationSync } = useNotifications();
+  const { forRole, unreadCount, markRead } = useNotifications();
 
-  // Smart features
-  const { zoneLoads, driverWorkloads, rebalancingSuggestions, autoRebalanceEnabled, setAutoRebalanceEnabled, surgeMode, activateSurge, fleetSummary, refreshLoads, applyRebalancing, lastRebalance } = useLoadBalancing({ orders, driverPositions, onNotice });
-  const { assignments, optimizationQueue, autoAssignEnabled, setAutoAssignEnabled, fleetStats: assignmentFleetStats, assignOrder, autoAssignAll, optimizeRoutes, applyOptimization, lastOptimization } = useSmartAssignment({ orders, driverPositions, onNotice, updateOrderStatus: (id, status, cb) => cb() });
-  const { churnAnalysis, ltvPredictions, segments, anomalies, revenueForecast, summary: analyticsSummary, loading: analyticsLoading, refresh: refreshAnalytics } = usePredictiveAnalytics({ orders, customers: [], driverPositions });
+  // Smart features. The hook names are used as-is: the previous destructure
+  // renamed `fleetStats` to `assignmentFleetStats` and asked for
+  // `applyRebalancing`/`lastRebalance`, which the hooks do and do not export
+  // respectively — `applyRebalancing` exists but was not returned, so it is
+  // now exported from the hook below.
+  const { zoneLoads, rebalancingSuggestions, autoRebalanceEnabled, setAutoRebalanceEnabled, surgeMode, activateSurge, fleetSummary, refreshLoads, applyRebalancing, lastUpdated } = useLoadBalancing({ orders, driverPositions: driverLocations, onNotice });
+  const { optimizationQueue, autoAssignEnabled, setAutoAssignEnabled, fleetStats, autoAssignAll, optimizeRoutes, applyOptimization } = useSmartAssignment({ orders, driverPositions: driverLocations, onNotice, updateOrderStatus: async (id, status) => (status ? { ok: true } : { ok: false }) });
+  const { anomalies, summary: analyticsSummary, loading: analyticsLoading } = usePredictiveAnalytics({ orders, customers: [], driverPositions: driverLocations });
 
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [viewMode, setViewMode] = useState('map'); // 'map' | 'list'
+  const [viewMode, setViewMode] = useState('map'); // 'map' | 'list' | 'smart'
   const [smartTab, setSmartTab] = useState('loadbalance');
 
-  const activeDrivers = getActiveDrivers();
-  const allDrivers = useMemo(() => Object.values(driverPositions), [driverPositions]);
+  const activeDrivers = onJobDrivers;
+
+  // Driver records shaped the way this view renders them.
+  //
+  // The cards below were written for `{ driverId, driverName, vehicle, location,
+  // status, speed, heading, lastUpdate, currentOrder }`, but the hook returns
+  // `{ id, name, vehicle, currentStatus, liveLocation, lastUpdate, activeJobs }`.
+  // Reading the old names off the new records gave every driver an undefined
+  // name and an `undefined` status, so the list rendered blank cards. Mapped once
+  // here rather than in each card.
+  const allDrivers = useMemo(() => {
+    const activeOrderByDriver = new Map();
+    orders.forEach((order) => {
+      if (order.driverId && (order.status === 'Assigned' || order.status === 'En Route')) {
+        activeOrderByDriver.set(order.driverId, order);
+      }
+    });
+
+    return drivers.map((entry) => {
+      const currentOrder = activeOrderByDriver.get(entry.id) ?? null;
+      const status = entry.status ?? entry.currentStatus;
+      // The roster stores `base` (e.g. "East Legon, Accra"); the hook adds
+      // `liveLocation`. Reading only `location` left every card saying
+      // "Unknown" even though dispatch knew exactly where the driver was based.
+      const positional = entry.liveLocation?.location || entry.liveLocation?.zone?.name;
+      const location = positional || entry.base || entry.location || 'Unknown';
+      // An order in flight is what the driver is actually doing, so it wins over
+      // the roster's `online` flag. Without this a driver on a delivery read
+      // "Available" while the card below showed the order they were carrying.
+      const busy = currentOrder || status === 'en_route';
+      return {
+        driverId: entry.id,
+        driverName: entry.name || entry.id,
+        vehicle: entry.vehicle || '—',
+        location,
+        status: busy ? 'on-job' : status === 'offline' ? 'offline' : 'online',
+        // The hook does not record speed or heading. That used to render as
+        // "null km/h"; the card now states what is known (last update) and
+        // leaves the rest out rather than filling the row with dashes.
+        speed: entry.speed ?? null,
+        heading: entry.heading ?? null,
+        lastUpdate: entry.lastUpdate || entry.liveLocation?.updatedAt || null,
+        currentOrder: currentOrder ? currentOrder.id : null,
+      };
+    });
+  }, [drivers, orders]);
+
+  // Routes are derived from the live positions, which is where the zone map is.
+  const getRoute = useCallback((orderId) => {
+    const order = orders.find((o) => o.id === orderId || o.code === orderId);
+    if (!order || !order.driverId) return null;
+    const driver = allDrivers.find((d) => d.driverId === order.driverId);
+    if (!driver) return null;
+
+    const started = new Date(order.assignedAt || order.createdAt || 0).getTime();
+    // Elapsed share of a one-hour delivery, which is the window the quote is
+    // built around. Previously this multiplied hours by 100, so any order older
+    // than an hour read 99% complete and a 20-minute-old one read 33%.
+    const DELIVERY_WINDOW_MS = 60 * 60 * 1000;
+    const progress = started > 0
+      ? Math.max(0, Math.min(99, Math.round(((Date.now() - started) / DELIVERY_WINDOW_MS) * 100)))
+      : 0;
+    return {
+      orderId: order.id,
+      origin: driver.location,
+      destination: order.location,
+      driver: driver.driverName,
+      vehicle: driver.vehicle,
+      // No route engine is connected, so a distance is not estimated here.
+      distance: null,
+      eta: order.eta || 'Awaiting estimate',
+      progress: order.status === 'Delivered' ? 100 : progress,
+      status: order.status,
+    };
+  }, [orders, allDrivers]);
 
   // Build driver cards with routes
   const driverCards = useMemo(() => {
@@ -310,25 +446,31 @@ export function DriverTrackingView({ orders, onNotice }) {
   }, [allDrivers, getRoute]);
 
   // Build order tracking cards
-  const activeOrders = orders.filter((o) =>
+  const activeOrders = useMemo(() => orders.filter((o) =>
     o.driverId && (o.status === 'Assigned' || o.status === 'En Route')
-  );
+  ), [orders]);
 
   const orderCards = useMemo(() => {
     return activeOrders.map((order) => ({
       order,
-      driverPosition: getDriverPosition(order.id),
+      // The driver carrying this order, which is what the mini card shows.
+      driverPosition: allDrivers.find((d) => d.driverId === order.driverId) ?? null,
       route: getRoute(order.id),
     }));
-  }, [activeOrders, getDriverPosition, getRoute]);
+  }, [activeOrders, allDrivers, getRoute]);
 
   const handleViewRoute = (orderId) => {
     const route = getRoute(orderId);
     if (route) setSelectedRoute(route);
+    else onNotice?.('Assign a driver to this order before opening its route.');
   };
 
   const notifications = forRole('ops');
   const opsUnread = unreadCount('ops');
+  // The alerts tab below reads `opsNotifications`; the list itself is
+  // `notifications`. The mismatch was never caught because nothing imported
+  // this view, so opening the tab would have thrown and blanked the page.
+  const opsNotifications = notifications;
 
   return (
     <>
@@ -340,11 +482,11 @@ export function DriverTrackingView({ orders, onNotice }) {
         </div>
         <div className="tracking-controls">
           <button
-            className={trackingEnabled ? 'primary-button' : 'outline-button'}
+            className="outline-button"
             type="button"
-            onClick={trackingEnabled ? stopTracking : startTracking}
+            onClick={() => { refreshLoads(); onNotice?.('Fleet positions, zone load and suggestions refreshed.'); }}
           >
-            {trackingEnabled ? '⏸ Stop Tracking' : '▶ Start Tracking'}
+            Refresh positions
           </button>
           <button
             className={viewMode === 'map' ? 'primary-button' : 'outline-button'}
@@ -371,11 +513,34 @@ export function DriverTrackingView({ orders, onNotice }) {
       </div>
 
       {viewMode === 'map' && (
-        <MapView
-          drivers={allDrivers}
-          selectedRoute={selectedRoute}
-          onCloseRoute={() => setSelectedRoute(null)}
-        />
+        <>
+          <MapView
+            drivers={allDrivers}
+            selectedRoute={selectedRoute}
+            onCloseRoute={() => setSelectedRoute(null)}
+          />
+          <section className="panel driver-track-list">
+            <div className="panel-title">
+              <span className="section-kicker">FLEET</span>
+              <h2>{allDrivers.length} driver{allDrivers.length !== 1 ? 's' : ''} · {allDrivers.filter((d) => d.status === 'online').length} available</h2>
+            </div>
+            {allDrivers.length === 0 ? (
+              <p className="empty-feed">No drivers on the fleet roster yet. A driver appears here once their account is on the roster.</p>
+            ) : (
+              <div className="driver-track-grid">
+                {driverCards.map(({ driver, route }) => (
+                  <DriverCard
+                    key={driver.driverId}
+                    driver={driver}
+                    route={route}
+                    driverRatings={fleetRatings?.ratings ?? []}
+                    onViewRoute={handleViewRoute}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {viewMode === 'list' && (
@@ -392,7 +557,7 @@ export function DriverTrackingView({ orders, onNotice }) {
                   driver={driver}
                   route={route}
                   driverRatings={fleetRatings?.ratings ?? []}
-                  VIEWRoute={handleViewRoute}
+                  onViewRoute={handleViewRoute}
                 />
               ))}
             </div>
@@ -465,8 +630,8 @@ export function DriverTrackingView({ orders, onNotice }) {
                 <strong>{fleetSummary.surgeActive ? 'ACTIVE' : 'OFF'}</strong>
               </article>
               <article className="summary-card">
-                <span>Last Rebalance</span>
-                <strong>{lastRebalance ? new Date(lastRebalance).toLocaleTimeString() : 'Never'}</strong>
+                <span>Last Refresh</span>
+                <strong>{lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : 'Never'}</strong>
               </article>
             </div>
               <div className="loadbalance-controls">
@@ -521,11 +686,11 @@ export function DriverTrackingView({ orders, onNotice }) {
 <div className="assignment-stats">
               <article className="summary-card">
                 <span>Pending Assignment</span>
-                <strong>{assignmentFleetStats.unassignedOrders}</strong>
+                <strong>{fleetStats.unassignedOrders}</strong>
               </article>
               <article className="summary-card">
                 <span>Available Drivers</span>
-                <strong>{assignmentFleetStats.availableDrivers}</strong>
+                <strong>{fleetStats.availableDrivers}</strong>
               </article>
               <article className="summary-card">
                 <span>Auto-Assign</span>
@@ -533,7 +698,7 @@ export function DriverTrackingView({ orders, onNotice }) {
               </article>
               <article className="summary-card">
                 <span>Pending Optimizations</span>
-                <strong>{assignmentFleetStats.pendingOptimizations}</strong>
+                <strong>{fleetStats.pendingOptimizations}</strong>
               </article>
             </div>
               <div className="assignment-controls">
@@ -541,10 +706,10 @@ export function DriverTrackingView({ orders, onNotice }) {
                   <input type="checkbox" checked={autoAssignEnabled} onChange={e => setAutoAssignEnabled(e.target.checked)} />
                   <span>Enable Auto-Assignment</span>
                 </label>
-                <button className="primary-button" onClick={autoAssignAll} disabled={assignmentFleetStats.unassignedOrders === 0 || assignmentFleetStats.availableDrivers === 0}>
+                <button className="primary-button" onClick={autoAssignAll} disabled={fleetStats.unassignedOrders === 0 || fleetStats.availableDrivers === 0}>
                   Assign All Now
                 </button>
-                <button className="outline-button" onClick={optimizeRoutes} disabled={assignmentFleetStats.pendingOptimizations === 0}>
+                <button className="outline-button" onClick={optimizeRoutes} disabled={fleetStats.pendingOptimizations === 0}>
                   Optimize Routes
                 </button>
               </div>
@@ -614,20 +779,16 @@ export function DriverTrackingView({ orders, onNotice }) {
 
           {smartTab === 'notifications' && (
             <div className="smart-panel">
-<div className="notification-stats">
-              <article className="summary-card">
-                <span>Unread</span>
-                <strong>{opsUnread}</strong>
-              </article>
-              <article className="summary-card">
-                <span>Push Enabled</span>
-                <strong>ON</strong>
-              </article>
-              <article className="summary-card">
-                <span>Quiet Hours</span>
-                <strong>OFF</strong>
-              </article>
-            </div>
+              <div className="notification-stats">
+                <article className="summary-card">
+                  <span>Unread</span>
+                  <strong>{opsUnread}</strong>
+                </article>
+                <article className="summary-card">
+                  <span>Total</span>
+                  <strong>{opsNotifications.length}</strong>
+                </article>
+              </div>
               <div className="panel-divider" />
               <h4>Recent Notifications</h4>
               <div className="notification-list">
@@ -638,7 +799,7 @@ export function DriverTrackingView({ orders, onNotice }) {
                       <span>{n.body}</span>
                       <small>{new Date(n.createdAt).toLocaleString()}</small>
                     </div>
-                    {!n.readAt && <button className="text-button" onClick={() => {}}>Mark Read</button>}
+                    {!n.readAt && !n.read && <button className="text-button" onClick={() => markRead(n.id)}>Mark Read</button>}
                   </div>
                 ))}
               </div>

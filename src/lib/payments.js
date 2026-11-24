@@ -1,4 +1,4 @@
-﻿import { readValue, writeValue } from './storage';
+import { readValue, writeValue } from './storage';
 import { formatCedi, toMinor } from './money';
 import { apiRequest, apiTarget } from './api';
 
@@ -264,7 +264,7 @@ export function buildReceipt({ order, payment, breakdown, issuedAt = new Date().
 
   // The order value is what the server priced, before any service charge. It is
   // reported separately so a receipt cannot present the discounted total as the
-  // whole bill — which is how a receipt once understated GH¢330.00 as GH₵300.00.
+  // whole bill — which is how a receipt once understated GH₵330.00 as GH₵300.00.
   const grossMinor = source.grossMinor;
   const buyerServiceCharge = source.buyerServiceCharge ?? 0;
 

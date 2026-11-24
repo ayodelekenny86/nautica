@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   buildReceipt,
   downloadReceipt,
@@ -134,7 +134,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
         <div><dt>Order value</dt><dd>{formatCedi(order.grossMinor ?? 0)}</dd></div>
         {/* Only shown when a charge is actually configured. The default plan has
             none, because the customer pays the discounted price inclusive, and a
-            GH¢0.00 line under "Order value" reads like a fee they were charged. */}
+            GH₵0.00 line under "Order value" reads like a fee they were charged. */}
         {serviceChargeMinor > 0 && (
           <div><dt>Service charge</dt><dd>{formatCedi(serviceChargeMinor)}</dd></div>
         )}
@@ -208,7 +208,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
           <dl>
             {/* Same rendering rule as the downloaded document, so the card the
                 customer sees and the file they keep cannot disagree — and an
-                unrecorded figure reads as missing rather than as GH?0.00. */}
+                unrecorded figure reads as missing rather than as GH₵0.00. */}
             <div><dt>Total charged</dt><dd>{receiptCell(receipt.totalCharged)}</dd></div>
             <div><dt>Water seller</dt><dd>{receiptCell(receipt.sellerShare)}</dd></div>
             <div><dt>Driver</dt><dd>{receiptCell(receipt.driverShare)}</dd></div>

@@ -92,6 +92,44 @@ describe('signing in as a driver', () => {
     expect(screen.queryByTestId('driver-not-rostered')).not.toBeInTheDocument();
     expect(screen.getByText(/hello, kojo/i)).toBeInTheDocument();
   });
+
+  test('survives being re-rendered from "not rostered" to a rostered driver', () => {
+    // This is the hook-order bug: `tabCounts` used to be a useMemo below the
+    // early return, so the first render called fewer hooks than the second and
+    // React threw "Rendered more hooks than during the previous render" — the
+    // driver workspace blanked out at the moment the roster entry arrived.
+    const { rerender } = render(
+      <DriverDashboard
+        orders={[]}
+        fleetDrivers={[KOJO]}
+        driverIdentifier="0200000000"
+        driverName="Kojo Mensah"
+        onAccept={vi.fn()}
+        onAdvance={vi.fn()}
+        onComplete={vi.fn()}
+        onReject={vi.fn()}
+        showNotice={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('driver-not-rostered')).toBeInTheDocument();
+
+    rerender(
+      <DriverDashboard
+        orders={[order()]}
+        fleetDrivers={[KOJO]}
+        driverIdentifier="0545009046"
+        driverName="Kojo Mensah"
+        onAccept={vi.fn()}
+        onAdvance={vi.fn()}
+        onComplete={vi.fn()}
+        onReject={vi.fn()}
+        showNotice={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('driver-not-rostered')).not.toBeInTheDocument();
+    expect(screen.getByText(/hello, kojo/i)).toBeInTheDocument();
+  });
 });
 
 describe('a driver only sees their own work', () => {

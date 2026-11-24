@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import {
   buildReceipt,
@@ -397,7 +397,7 @@ describe('receipts', () => {
 
   test('never shows an order value as the total when a fee is configured', () => {
     // Regression: the receipt once rendered `grossMinor` as the total, which
-    // understated GH¢330.00 as GH₵300.00 and made the fee vanish from the
+    // understated GH₵330.00 as GH₵300.00 and made the fee vanish from the
     // customer's copy of the record. The default plan charges no fee so the two
     // figures coincide, which would hide that bug again, so the case is built
     // with a configured charge where they genuinely differ.

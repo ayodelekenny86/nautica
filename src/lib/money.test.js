@@ -119,7 +119,7 @@ describe('allocation', () => {
   });
 
   test('largest remainder keeps a repeating split exact', () => {
-    // GH¢10.00 at 70/5/25 needs 7000/500/2500; this checks a case that does not divide.
+    // GH₵10.00 at 70/5/25 needs 7000/500/2500; this checks a case that does not divide.
     const result = allocate(toMinor(10));
     expect(result.sellerReceives + result.driverReceives + result.platformCommission).toBe(1000);
   });
@@ -197,10 +197,10 @@ describe('price formation', () => {
     expect(() => quotePrice({ listPrice: 600, surgePercent: -10 })).toThrow(RangeError);
   });
 
-  test('the business rule: the customer pays GH¢300, inclusive of the 50% discount', () => {
-    // This is the rule the whole pricing module exists to satisfy: a GH¢600 list
-    // price less 50% is GH¢300, and GH¢300 is what is actually taken from the
-    // buyer. It used to charge GH¢330 by adding a 10% service charge on top of
+  test('the business rule: the customer pays GH₵300, inclusive of the 50% discount', () => {
+    // This is the rule the whole pricing module exists to satisfy: a GH₵600 list
+    // price less 50% is GH₵300, and GH₵300 is what is actually taken from the
+    // buyer. It used to charge GH₵330 by adding a 10% service charge on top of
     // the discounted price, so the advertised 50% was not the price paid.
     const quote = quotePrice(DEFAULT_PRICING);
     const money = allocate(quote.totalMinor, DEFAULT_SPLIT);
@@ -212,8 +212,8 @@ describe('price formation', () => {
     expect(formatCedi(money.buyerPays)).toBe('GH₵300.00');
   });
 
-  test('the shares divide the GH¢300 the customer paid, with nothing unaccounted for', () => {
-    // Previously the platform took 40% of GH¢300 plus a GH¢30 fee that was never
+  test('the shares divide the GH₵300 the customer paid, with nothing unaccounted for', () => {
+    // Previously the platform took 40% of GH₵300 plus a GH₵30 fee that was never
     // part of any order value, so the breakdown described money that did not
     // exist. The three shares must now sum to exactly what the buyer paid.
     const { buyerPays, sellerReceives, driverReceives, platformCommission } = allocate(30000, DEFAULT_SPLIT);
@@ -237,7 +237,7 @@ describe('price formation', () => {
 
   test('the default plan has no service charge configured', () => {
     // Guards the rule at its source. If someone re-adds a fee here, the customer
-    // stops paying GH¢300 and this fails before it reaches a customer.
+    // stops paying GH₵300 and this fails before it reaches a customer.
     expect(DEFAULT_SPLIT.buyerServiceCharge).toBe(0);
     expect(DEFAULT_PRICING.listPrice).toBe(600);
     expect(DEFAULT_PRICING.discountPercent).toBe(50);

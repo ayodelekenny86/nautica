@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatPhoneForDisplay } from '../lib/accounts';
 
 /**
@@ -253,14 +253,4 @@ function getRoleColor(role) {
     admin: '#f0a202',
   };
   return colors[role] || '#666';
-}
-
-function useMemo(fn, deps) {
-  // Simple inline memo for this component
-  const cache = useRef({ deps: null, value: null });
-  if (!cache.current.deps || deps.some((d, i) => d !== cache.current.deps[i])) {
-    cache.current.value = fn();
-    cache.current.deps = deps;
-  }
-  return cache.current.value;
 }

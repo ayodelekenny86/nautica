@@ -2,6 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { list, insert, update, replaceAll } from '../lib/collections';
 import { supabase, supabaseUrl, anonKey, writeResult } from '../lib/supabase';
 
+// These three constants were deleted at some point while the code that reads
+// them stayed behind, so `USE_SERVER` threw a ReferenceError inside render and
+// took the whole app down on mount (useNotifications is mounted by App). They
+// are restored here with the same meanings they had.
+const USE_SERVER = typeof window !== 'undefined' && Boolean(supabaseUrl && anonKey && supabase);
+const SYNC_RETRY_MS = 5000;
+const SYNC_STORAGE_KEY = 'nautica.notifications.outbox';
 
 function enqueueOutbox(notification) {
   if (typeof window === 'undefined') return;
@@ -66,7 +73,10 @@ export const NOTIFICATION_SYNC = {
 export default function useNotifications() {
   const [items, setItems] = useState(() => list('notifications'));
   const [sync, setSync] = useState(USE_SERVER ? NOTIFICATION_SYNC.blocked : NOTIFICATION_SYNC.unconfigured);
-  const lastChecked = useRef(Date.now());
+  // `null` until the first refresh, which is when it is actually stamped. A
+  // Date.now() in the ref initialiser ran on every render even though only the
+  // first value was kept.
+  const lastChecked = useRef(null);
   const lastFingerprint = useRef('');
   const [pendingCount, setPendingCount] = useState(() => readPendingCount());
   useEffect(() => {
@@ -223,9 +233,9 @@ export default function useNotifications() {
         }));
         if (!written.ok) {
           console.warn('Failed to publish notification, queued for retry:', written.error);
-        enqueueOutbox({ role, title, body, orderId, kind });
-        setPendingCount(readPendingCount());
-        return { ...row, delivered: false, error: written.error, queued: true };
+          enqueueOutbox({ role, title, body, orderId, kind });
+          setPendingCount(readPendingCount());
+          return { ...row, delivered: false, error: written.error, queued: true };
         }
       } catch (err) {
         console.warn('Failed to publish notification, queued for retry:', err);

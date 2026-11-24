@@ -27,6 +27,7 @@
     "deploy": "npm run build",
     "deploy:live": "npm run build && npx firebase deploy --only hosting",
     "verify:live": "node scripts/verify-live.mjs",
+    "dead:modules": "node scripts/find-dead-modules.mjs",
     "supabase:deploy": "npx supabase functions deploy fcm pricing orders payments sellers ops config notifications ai",
     "supabase:push": "npx supabase db push",
     "dev:firebase": "firebase emulators:start --only auth,firestore,storage,functions,hosting"
@@ -50,7 +51,12 @@
     ]
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.8",
+    "globals": "^17.14.0",
     "jsdom": "^26.1.0",
     "vite": "^8.0.16",
     "vite-plugin-pwa": "^1.3.0",
