@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatCedi } from '../lib/money';
+import { validateBusinessName, validateVehicleRegistration } from '../lib/security';
 
 function JobCard({ order, driver, onAccept, onStart, onComplete, onView }) {
   const statusColors = {
@@ -348,6 +349,10 @@ export function SellerDashboard({
 
           <form className="seller-form" onSubmit={(event) => {
             event.preventDefault();
+            const businessValidation = validateBusinessName(sellerProfile.business);
+            if (!businessValidation.ok) { showNotice(businessValidation.reason); return; }
+            const vehicleValidation = validateVehicleRegistration(sellerProfile.vehicle);
+            if (!vehicleValidation.ok) { showNotice(vehicleValidation.reason); return; }
             showNotice('Profile updated. Ops will review changes within one business day.');
           }}>
             <div className="form-row">

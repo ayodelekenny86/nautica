@@ -17,8 +17,22 @@ import {
   validateIdentifier,
 } from '../lib/accounts';
 import { applyAsSeller, opsSignIn, sellerStatus } from '../lib/payments';
-import { persistedState, readValue, writeValue } from '../lib/storage';
+import { readValue, writeValue } from '../lib/storage';
 import { syncUsers } from '../lib/collections';
+import {
+  storeSession,
+  clearSession,
+  readSession,
+  logSecurityEvent,
+  recordFailedLogin,
+  clearFailedLogin,
+  authRateLimiter,
+  validateCsrfToken,
+  createCsrfToken,
+  writeCsrfToken,
+  SESSION_TTL_MS,
+  LOGIN_LOCKOUT_MS,
+} from '../lib/security';
 
 const initialSellerProfile = { business: '', phone: '', vehicle: '', capacity: '2,000 gallons', document: 'ID document not uploaded' };
 
@@ -41,7 +55,8 @@ export function useAuth() {
 
   const [role, setRole] = useState('buyer');
   const [notice, setNotice] = useState('');
-  const [session, setSession] = useState(persistedState('session', null));
+  const [session, setSession] = useState(null);
+  const [sessionRestored, setSessionRestored] = useState(false);
   const [email, setEmail] = useState('');
   const [available, setAvailable] = useState(true);
   const [ready, setReady] = useState(false);
@@ -74,12 +89,18 @@ export function useAuth() {
   // would hand an XSS payload a valid admin credential for the token's lifetime.
   const [opsToken, setOpsToken] = useState(null);
 
-  // Ready once the local registry has been read. There is no seeding step: the
-  // app no longer invents accounts, so there is nothing to create on first run.
+  // Ready once the local registry has been read and the encrypted session is restored.
   useEffect(() => {
     let cancelled = false;
-    syncUsers(listAccounts());
-    if (!cancelled) setReady(true);
+    (async () => {
+      syncUsers(listAccounts());
+      const restored = await readSession();
+      if (!cancelled) {
+        setSession(restored);
+        setSessionRestored(true);
+        setReady(true);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -104,29 +125,24 @@ export function useAuth() {
   const adminAuthenticated = signedInAs('ops') && Boolean(opsToken);
   const sellerAuthenticated = signedInAs('seller') && sellerApproved;
 
-  const startSession = useCallback((account) => {
-    setSession({
+  const startSession = useCallback(async (account) => {
+    const sessionPayload = {
       identifier: account.identifier,
       identifierType: account.identifierType,
       displayName: account.displayName,
       role: account.role,
       phone: account.phone ?? null,
       signedInAt: new Date().toISOString(),
-    });
-    writeValue('session', {
-      identifier: account.identifier,
-      identifierType: account.identifierType,
-      displayName: account.displayName,
-      role: account.role,
-      phone: account.phone ?? null,
-      signedInAt: new Date().toISOString(),
-    });
+    };
+    setSession(sessionPayload);
+    await storeSession(sessionPayload);
+    logSecurityEvent('session-started', { role: account.role, identifier: account.identifier });
     setSignInError('');
   }, []);
 
   const signOut = useCallback(() => {
     setSession(null);
-    writeValue('session', null);
+    clearSession();
     setPhoneChallenge(null);
     setPhoneIdentifier('');
     setPhoneCode('');
@@ -164,6 +180,13 @@ export function useAuth() {
       return begun;
     }
 
+    const rateCheck = authRateLimiter.check(`phone-signin:${parsed.normalized}`);
+    if (!rateCheck.allowed) {
+      logSecurityEvent('rate-limited', { action: 'phone-signin', identifier: parsed.normalized, retryAfter: rateCheck.retryAfter });
+      setSignInError(`Too many sign-in attempts. Try again in ${Math.ceil(rateCheck.retryAfter / 1000)} seconds.`);
+      return { ok: false, reason: 'rate-limited' };
+    }
+
     setPhoneChallenge(begun.challenge);
     setPhoneIdentifier(parsed.normalized);
     setPhoneCode(begun.code);
@@ -179,8 +202,14 @@ export function useAuth() {
     const done = await completePhoneSignIn({ identifier: phoneIdentifier, challenge: phoneChallenge, code, secret });
     if (!done.ok) {
       setSignInError(done.detail);
+      const failure = recordFailedLogin(phoneIdentifier);
+      logSecurityEvent('phone-signin-failed', { identifier: phoneIdentifier, reason: done.reason, locked: failure.locked });
+      if (failure.locked) {
+        setSignInError(`Too many failed attempts. Try again in ${Math.ceil(LOGIN_LOCKOUT_MS / 60000)} minutes.`);
+      }
       return done;
     }
+    clearFailedLogin(phoneIdentifier);
     startSession(done.account);
     setPhoneChallenge(null);
     setPhoneCode('');
@@ -202,11 +231,24 @@ export function useAuth() {
       return { ok: false, reason: 'invalid-identifier' };
     }
 
+    const rateCheck = authRateLimiter.check(`password-signin:${parsed.normalized}`);
+    if (!rateCheck.allowed) {
+      logSecurityEvent('rate-limited', { action: 'password-signin', identifier: parsed.normalized, retryAfter: rateCheck.retryAfter });
+      setSignInError(`Too many sign-in attempts. Try again in ${Math.ceil(rateCheck.retryAfter / 1000)} seconds.`);
+      return { ok: false, reason: 'rate-limited' };
+    }
+
     const result = await authenticateWithPassword(parsed.normalized, password);
     if (!result.ok) {
       setSignInError(result.detail);
+      const failure = recordFailedLogin(parsed.normalized);
+      logSecurityEvent('password-signin-failed', { identifier: parsed.normalized, reason: result.reason, locked: failure.locked });
+      if (failure.locked) {
+        setSignInError(`Too many failed attempts. Try again in ${Math.ceil(LOGIN_LOCKOUT_MS / 60000)} minutes.`);
+      }
       return result;
     }
+    clearFailedLogin(parsed.normalized);
 
     // An ops sign-in also has to satisfy the server, because the server decides
     // what an operator may change. The local registry alone cannot grant that.
@@ -539,6 +581,7 @@ export function useAuth() {
 
   return {
     ready,
+    sessionRestored,
     role,
     selectRole,
     notice,

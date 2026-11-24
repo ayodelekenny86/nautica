@@ -7,6 +7,7 @@ import { formatPhoneForDisplay } from './lib/accounts';
 import { seedProducts } from './lib/collections';
 import { referenceFromLocation } from './lib/payments';
 import { initWebVitals, trackEvent, EVENTS } from './lib/analytics';
+import { requireSecureContext, storeSession, readSession, clearSession, logSecurityEvent, SESSION_TTL_MS, INACTIVITY_WARN_MS } from './lib/security';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import MetaSignInButton from './components/MetaSignInButton';
 import { PWASetup, PWADetectOffline } from './components/PWASetup';
@@ -78,8 +79,64 @@ function App() {
   const [language, setLanguage] = useState('en');
   const [region, setRegion] = useState('Accra');
   const [detailOrderId, setDetailOrderId] = useState(null);
+  const [securityBlocked, setSecurityBlocked] = useState(null);
+  const [sessionRestored, setSessionRestored] = useState(false);
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [sessionWarning, setSessionWarning] = useState(null);
   const t = translations[language] ?? translations.en;
   seedProducts();
+
+  // Refuse to render on an insecure context (HTTP, non-localhost).
+  useEffect(() => {
+    if (!requireSecureContext()) {
+      setSecurityBlocked('This app requires a secure HTTPS connection. Please open it over HTTPS.');
+      logSecurityEvent('insecure-context-blocked', { url: typeof window !== 'undefined' ? window.location.href : 'unknown' });
+    }
+  }, []);
+
+  // Restore session from encrypted localStorage on first load.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const restored = await readSession();
+      if (!cancelled) {
+        setSessionRestored(true);
+        if (restored) {
+          logSecurityEvent('session-restored', { role: restored.role, identifier: restored.identifier });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Track user activity for session timeout.
+  useEffect(() => {
+    const handlers = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    const onActivity = () => {
+      const now = Date.now();
+      setLastActivity(now);
+      if (sessionWarning) setSessionWarning(null);
+    };
+    handlers.forEach((event) => window.addEventListener(event, onActivity, true));
+    return () => handlers.forEach((event) => window.removeEventListener(event, onActivity, true));
+  }, [sessionWarning]);
+
+  // Session timeout: warn at INACTIVITY_WARN_MS, sign out at SESSION_TTL_MS.
+  useEffect(() => {
+    if (!sessionRestored || !session) return;
+    const now = Date.now();
+    const idleMs = now - lastActivity;
+    if (idleMs > SESSION_TTL_MS) {
+      signOut();
+      clearSession();
+      setSessionWarning('session-expired');
+      logSecurityEvent('session-expired-inactivity', { role: session.role });
+      return;
+    }
+    if (idleMs > SESSION_TTL_MS - INACTIVITY_WARN_MS) {
+      setSessionWarning('session-expiring');
+    }
+  }, [sessionRestored, session, lastActivity]);
 
   useEffect(() => {
     initWebVitals();
@@ -178,7 +235,18 @@ function App() {
 
   return (
     <div className={`app-shell ${role === 'driver' ? 'is-driver' : ''}`}>
-      <ErrorBoundary fallback={(error, reset) => (
+      {securityBlocked && (
+        <div className="access-gate panel" style={{ maxWidth: '600px', margin: '60px auto', padding: '32px', textAlign: 'center' }}>
+          <div className="error-icon" style={{ fontSize: '48px', textAlign: 'center', marginBottom: '16px' }}>?</div>
+          <h1 style={{ textAlign: 'center', marginBottom: '8px' }}>Secure connection required</h1>
+          <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: '24px' }}>{securityBlocked}</p>
+          <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: '24px' }}>Nautica runs only over HTTPS so your orders, payments, and account data cannot be intercepted.</p>
+          <button className="primary-button full" onClick={() => { if (typeof window !== 'undefined') window.location.reload(); }}>Try again</button>
+        </div>
+      )}
+      {!securityBlocked && (
+        <>
+        <ErrorBoundary fallback={(error, reset) => (
         <div className="access-gate panel" style={{ maxWidth: '600px', margin: '60px auto', padding: '32px' }}>
           <div className="error-icon" style={{ fontSize: '48px', textAlign: 'center', marginBottom: '16px' }}>?</div>
           <h1 style={{ textAlign: 'center', marginBottom: '8px' }}>Something went wrong</h1>
@@ -362,8 +430,23 @@ function App() {
         )}
         {ready && role === 'ops' && (adminAuthenticated ? <Suspense fallback={null}><OpsView orders={orders} showNotice={showNotice} /></Suspense> : <AdminAccessGate onSignIn={signInWithPassword} error={signInError} onGoogle={signInWithGoogleIdentity} onMeta={signInWithMetaIdentity} showNotice={showNotice} />)}
         {legalOpen && <LegalPage onClose={() => setLegalOpen(false)} />}
+        {sessionWarning === 'session-expiring' && (
+          <div className="notice" role="alert" style={{ background: '#fff3cd', border: '1px solid #ffeeba', color: '#856404', padding: '12px', margin: '12px 0', borderRadius: '4px' }}>
+            <strong>Your session will expire soon due to inactivity.</strong> Interact with the page to stay signed in.
+          </div>
+        )}
+        {sessionWarning === 'session-expired' && (
+          <div className="access-gate panel" style={{ maxWidth: '600px', margin: '60px auto', padding: '32px', textAlign: 'center' }}>
+            <div className="error-icon" style={{ fontSize: '48px', textAlign: 'center', marginBottom: '16px' }}>?</div>
+            <h1 style={{ textAlign: 'center', marginBottom: '8px' }}>Session expired</h1>
+            <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: '24px' }}>Your session expired after inactivity. Please sign in again.</p>
+            <button className="primary-button full" onClick={() => { if (typeof window !== 'undefined') window.location.reload(); }}>Sign in again</button>
+          </div>
+        )}
         </main>
       </ErrorBoundary>
+      </>
+      )}
     </div>
   );
 }

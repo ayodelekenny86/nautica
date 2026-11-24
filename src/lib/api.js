@@ -1,4 +1,5 @@
 ﻿import { supabaseUrl, anonKey } from './supabase';
+import { readCsrfToken } from './security';
 
 /**
  * One place that knows how to reach the Nautica server.
@@ -119,6 +120,8 @@ export async function apiRequest(path, { method = 'GET', body, signal, auth = nu
 
   let response;
   try {
+    const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const csrfToken = isStateChanging ? readCsrfToken() : null;
     response = await fetch(apiUrl(path), {
       method,
       signal: abort.signal,
@@ -127,6 +130,10 @@ export async function apiRequest(path, { method = 'GET', body, signal, auth = nu
         // Only sent when there is a token, so unauthenticated calls carry no
         // Authorization header at all rather than an empty one.
         ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+        // CSRF token required on state-changing requests to prevent cross-site
+        // request forgery. The token is bound to the session and validated by
+        // the server; without it the request is rejected.
+        ...(isStateChanging && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
         // The anon key is public by design and is what Supabase uses to identify
         // the caller. It is not a secret and grants no privileged access.
         ...(apiTarget() === 'supabase' && anonKey ? { apikey: anonKey } : {}),
