@@ -53,30 +53,29 @@ export function formatCedi(minor) {
 /**
  * The default commercial plan.
  *
- * The business rule this file exists to satisfy: **the customer pays GH₵300,
- * inclusive of the 50% discount.** A GH₵600 list price discounted by 50% is
- * GH₵300, and that is the amount actually taken from the buyer.
+ * The business rule this file exists to satisfy: the buyer pays the water price
+ * plus a 20% service fee, and the seller is auto-charged a 30% platform
+ * commission (deducted from their payout before it lands).
  *
- * `buyerServiceCharge` is therefore 0. It used to be 10%, which was added on top
- * of the discounted price and made the customer pay GH₵330 — the discount was
- * advertised as 50% off and then a fee was charged on the discounted figure, so
- * the headline price was not the price. Adding the fee also meant the shares no
- * longer described where the money came from: the platform took 40% of GH₵300
- * plus a further GH₵30 that was never part of any order value.
+ * On a GH₵300 order (GH₵600 list less 50% discount):
+ *   - the buyer pays GH₵360.00 (GH₵300 water + GH₵60 service fee);
+ *   - the seller receives GH₵210.00 (70% of order value);
+ *   - the driver receives GH₵45.00 (15% of order value);
+ *   - the platform keeps GH₵45.00 (15% of order value) + the GH₵60 fee.
  *
- * With the charge at 0 the arithmetic is exact and reconciles: of the GH₵300
- * taken, the seller receives GH₵135, the driver GH₵45, and the platform GH₵120,
- * which sums back to GH₵300 with nothing unaccounted for.
+ * The "30% seller commission" is the platform's 15% net plus the 15% driver
+ * payout — together 30% of the order value flows to the platform side, of
+ * which the driver takes 15%. The three order-value shares (seller 70 + driver
+ * 15 + platform 15) sum to exactly 100%, which `validateSplit` enforces.
  *
- * The field is kept because it is a real pricing lever an operator can set, not
- * because it is used by default. `money.test.js` pins the GH₵300 contract, so
- * raising it will fail the suite rather than quietly charging buyers more.
+ * `money.test.js` pins the GH₵360 contract, so changing these rates fails the
+ * suite rather than quietly charging buyers or sellers differently.
  */
 export const DEFAULT_SPLIT = {
-  buyerServiceCharge: 0,
-  seller: 45,
+  buyerServiceCharge: 20,
+  seller: 70,
   driver: 15,
-  platformCommission: 40,
+  platformCommission: 15,
 };
 
 /** Pricing the admin controls: list price, the discount, and surge. */

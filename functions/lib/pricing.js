@@ -17,19 +17,22 @@ export const MINOR_UNITS_PER_MAJOR = 100;
 /**
  * The revenue split, mirroring `src/lib/money.js`.
  *
- * `buyerServiceCharge` is 0 so the customer pays exactly the discounted price:
- * a GH₵600 list price less 50% is GH₵300, and GH₵300 is what is taken. It used
- * to be 10%, which was charged on top of the discount and made the customer pay
- * GH₵330 while still advertising 50% off. The shares below then divide that
- * GH₵300 exactly: seller GH₵135, driver GH₵45, platform GH₵120.
+ * The buyer pays a 20% service charge on top of the water price, and the seller
+ * is auto-charged a 30% platform commission (deducted before payout). On a
+ * GH₵300 order: buyer pays GH₵360, seller receives GH₵210 (70%), driver
+ * receives GH₵45 (15%), platform keeps GH₵45 (15%) plus the GH₵60 fee.
  *
- * `money.test.js` and `payments.test.js` pin that figure, so this cannot drift.
+ * The "30% seller commission" = platform net (15%) + driver (15%). The three
+ * order-value shares (70 + 15 + 15) sum to 100%.
+ *
+ * `money.test.js` and `payments.test.js` pin these figures, so this cannot
+ * drift from the client copy.
  */
 export const DEFAULT_SPLIT = {
-  buyerServiceCharge: 0,
-  seller: 45,
+  buyerServiceCharge: 20,
+  seller: 70,
   driver: 15,
-  platformCommission: 40,
+  platformCommission: 15,
 };
 
 export const DEFAULT_PRICING = {

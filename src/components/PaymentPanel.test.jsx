@@ -29,11 +29,11 @@ const ORDER = {
   volumeLitres: 5000,
   status: 'Pending',
   grossMinor: 30000,
-  chargedMinor: 30000,
-  buyerServiceCharge: 0,
-  sellerReceives: 13500,
+  chargedMinor: 36000,
+  buyerServiceCharge: 6000,
+  sellerReceives: 21000,
   driverReceives: 4500,
-  platformCommission: 12000,
+  platformCommission: 4500,
 };
 
 const SETTLEMENT = {
@@ -42,7 +42,7 @@ const SETTLEMENT = {
   reason: 'payment_confirmed',
   reference: 'aq1-abc',
   orderId: 'NAUT-1A2B3C',
-  amountMinor: 30000,
+  amountMinor: 36000,
   currency: 'GHS',
   provider: 'paystack',
 };
@@ -83,10 +83,10 @@ test('shows the order\'s priced figures after a confirmed payment', async () => 
   // The panel renders the receipt card only once the server has confirmed.
   const card = (await screen.findByRole('heading', { name: /receipt aq1-abc/i })).closest('div');
   expect(card).not.toBeNull();
-  expect(card).toHaveTextContent('GH₵300.00');
-  expect(card).toHaveTextContent('GH₵135.00');
+  expect(card).toHaveTextContent('GH₵360.00');
+  expect(card).toHaveTextContent('GH₵210.00');
   expect(card).toHaveTextContent('GH₵45.00');
-  expect(card).toHaveTextContent('GH₵120.00');
+  expect(card).toHaveTextContent('GH₵45.00');
   // The failure this guards against: a settled payment shown as zeroes.
   expect(card).not.toHaveTextContent('GH₵0.00');
 });
@@ -101,7 +101,7 @@ test('says a figure is unrecorded instead of showing a zero or a blank', async (
   const card = (await screen.findByRole('heading', { name: /receipt aq1-abc/i })).closest('div');
   expect(card).not.toBeNull();
   // The amount the provider took is still known, and is still reported.
-  expect(card).toHaveTextContent('GH₵300.00');
+  expect(card).toHaveTextContent('GH₵360.00');
   expect(screen.getAllByText('Not recorded')).toHaveLength(3);
 });
 

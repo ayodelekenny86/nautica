@@ -29,21 +29,21 @@ const ORDER = {
   location: 'East Legon, Accra',
   volumeLitres: 5000,
   grossMinor: 30000,
-  chargedMinor: 30000,
-  buyerServiceCharge: 0,
-  sellerReceives: 13500,
+  chargedMinor: 36000,
+  buyerServiceCharge: 6000,
+  sellerReceives: 21000,
   driverReceives: 4500,
-  platformCommission: 12000,
+  platformCommission: 4500,
 };
 
 const BREAKDOWN = {
   grossMinor: 30000,
-  // What the customer actually paid: order value plus the service charge.
-  buyerPays: 30000,
-  buyerServiceCharge: 0,
-  sellerReceives: 13500,
+  // What the customer actually paid: order value plus the 20% service charge.
+  buyerPays: 36000,
+  buyerServiceCharge: 6000,
+  sellerReceives: 21000,
   driverReceives: 4500,
-  platformCommission: 12000,
+  platformCommission: 4500,
 };
 
 function jsonResponse(body, status = 200) {
@@ -76,15 +76,15 @@ describe('reading the server order shape', () => {
     volume_litres: 7571,
     currency: 'GHS',
     pricing: { listPrice: 600, discountPercent: 50, surgePercent: 0, surgeReason: '' },
-    split: { buyerServiceCharge: 0, seller: 45, driver: 15, platformCommission: 40 },
+    split: { buyerServiceCharge: 20, seller: 70, driver: 15, platformCommission: 15 },
     gross_minor: 30000,
-    charged_minor: 30000,
-    buyer_pays: 30000,
-    buyer_service_charge: 0,
-    seller_receives: 13500,
+    charged_minor: 36000,
+    buyer_pays: 36000,
+    buyer_service_charge: 6000,
+    seller_receives: 21000,
     driver_receives: 4500,
-    platform_commission: 12000,
-    company_take: 12000,
+    platform_commission: 4500,
+    company_take: 10500,
     discount_minor: 30000,
     surge_minor: 0,
     status: 'Awaiting payment',
@@ -104,8 +104,8 @@ describe('reading the server order shape', () => {
     ]) {
       expect(order[field], `${field} must be mapped`).not.toBeUndefined();
     }
-    expect(order.chargedMinor).toBe(30000);
-    expect(order.sellerReceives).toBe(13500);
+    expect(order.chargedMinor).toBe(36000);
+    expect(order.sellerReceives).toBe(21000);
     expect(order.driverReceives).toBe(4500);
     expect(order.volumeLitres).toBe(7571);
   });
@@ -117,7 +117,7 @@ describe('reading the server order shape', () => {
     const order = normaliseOrder(SERVER_ORDER);
     expect(order.listMinor).toBe(60000);
     expect(formatCedi(order.listMinor)).toBe('GH₵600.00');
-    expect(formatCedi(order.chargedMinor)).toBe('GH₵300.00');
+    expect(formatCedi(order.chargedMinor)).toBe('GH₵360.00');
   });
 
   test('prefers a list price the server does send', () => {
@@ -128,7 +128,7 @@ describe('reading the server order shape', () => {
   test('leaves nested pricing and split untouched, they are already camelCase', () => {
     const order = normaliseOrder(SERVER_ORDER);
     expect(order.pricing.discountPercent).toBe(50);
-    expect(order.split.seller).toBe(45);
+    expect(order.split.seller).toBe(70);
   });
 
   test('passes an order that is already camelCase through unchanged', () => {
@@ -156,9 +156,9 @@ describe('reading the server order shape', () => {
       expect(row, `${forbidden} is not a column on orders`).not.toHaveProperty(forbidden);
     }
     // And the real columns survive the round trip.
-    expect(row.charged_minor).toBe(30000);
+    expect(row.charged_minor).toBe(36000);
     expect(row.gross_minor).toBe(30000);
-    expect(row.seller_receives).toBe(13500);
+    expect(row.seller_receives).toBe(21000);
     expect(row.driver_receives).toBe(4500);
     expect(row.volume_litres).toBe(7571);
     expect(row.pricing).toEqual(SERVER_ORDER.pricing);
@@ -329,7 +329,7 @@ describe('receipts', () => {
     reason: 'payment_confirmed',
     reference: 'aq1-abc',
     orderId: 'NAUT-1A2B3C',
-    amountMinor: 30000,
+    amountMinor: 36000,
     currency: 'GHS',
     provider: 'paystack',
   };
@@ -338,14 +338,14 @@ describe('receipts', () => {
     // This is the call the panel actually makes. It used to pass
     // `result.breakdown`, which is undefined in production, so every figure fell
     // through to `?? 0` and the customer's receipt read GH₵0.00 throughout — on
-    // the document they keep, for a payment that had just taken GH₵300.00.
+    // the document they keep, for a payment that had just taken GH₵360.00.
     const receipt = buildReceipt({ order: ORDER, payment: SETTLEMENT });
 
-    expect(receipt.totalCharged).toBe('GH₵300.00');
+    expect(receipt.totalCharged).toBe('GH₵360.00');
     expect(receipt.orderValue).toBe('GH₵300.00');
-    expect(receipt.sellerShare).toBe('GH₵135.00');
+    expect(receipt.sellerShare).toBe('GH₵210.00');
     expect(receipt.driverShare).toBe('GH₵45.00');
-    expect(receipt.platformShare).toBe('GH₵120.00');
+    expect(receipt.platformShare).toBe('GH₵45.00');
     expect(receipt.provider).toBe('paystack');
     // No figure may read as a zero the customer was never charged.
     for (const value of [receipt.totalCharged, receipt.orderValue, receipt.sellerShare, receipt.driverShare, receipt.platformShare]) {
@@ -388,19 +388,19 @@ describe('receipts', () => {
       breakdown: BREAKDOWN,
     });
 
-    expect(receipt.totalCharged).toBe('GH₵300.00');
-    expect(receipt.sellerShare).toBe('GH₵135.00');
+    expect(receipt.totalCharged).toBe('GH₵360.00');
+    expect(receipt.sellerShare).toBe('GH₵210.00');
     expect(receipt.driverShare).toBe('GH₵45.00');
-    expect(receipt.platformShare).toBe('GH₵120.00');
+    expect(receipt.platformShare).toBe('GH₵45.00');
+    expect(receipt.serviceCharge).toBe('GH₵60.00');
     expect(receipt.status).toBe('settled');
   });
 
   test('never shows an order value as the total when a fee is configured', () => {
     // Regression: the receipt once rendered `grossMinor` as the total, which
-    // understated GH₵330.00 as GH₵300.00 and made the fee vanish from the
-    // customer's copy of the record. The default plan charges no fee so the two
-    // figures coincide, which would hide that bug again, so the case is built
-    // with a configured charge where they genuinely differ.
+    // understated the fee and made it vanish from the customer's copy. The
+    // default plan now charges 20%, so the two figures always differ; this case
+    // uses a different fee to prove the receipt shows the actual charge.
     const withFee = { ...BREAKDOWN, grossMinor: 30000, buyerServiceCharge: 3000, buyerPays: 33000 };
     const receipt = buildReceipt({
       order: ORDER,
@@ -413,13 +413,21 @@ describe('receipts', () => {
     expect(receipt.totalCharged).toBe('GH₵330.00');
   });
 
-  test('omits the service charge line when no charge applies', () => {
-    // The default plan. A GH₵0.00 fee line on a customer's receipt implies they
-    // were billed a fee, so the field is left out entirely.
+  test('shows the service charge line when a charge applies', () => {
+    // The default plan charges 20%, so the receipt itemises it.
     const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: BREAKDOWN });
+    expect(receipt.serviceCharge).toBe('GH₵60.00');
+    expect(receipt.totalCharged).toBe('GH₵360.00');
+    expect(receipt.orderValue).toBe('GH₵300.00');
+  });
+
+  test('omits the service charge line when no charge applies', () => {
+    // A zero-fee plan: the field is left out entirely so the receipt does not
+    // itemise a GH₵0.00 fee the customer was never billed.
+    const noFee = { ...BREAKDOWN, buyerServiceCharge: 0, buyerPays: 30000 };
+    const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: noFee });
     expect(receipt.serviceCharge).toBeUndefined();
     expect(receipt.totalCharged).toBe('GH₵300.00');
-    expect(receipt.orderValue).toBe('GH₵300.00');
   });
 
   test('carries no simulated marker, because there is no simulated receipt', () => {
@@ -438,25 +446,27 @@ describe('receipts', () => {
     expect(rows[0].totalCharged).toBe('GH₵400.00');
   });
 
-  test('the printed receipt omits the service charge when none applies', () => {
-    // The default plan charges no fee, so the downloaded document must not carry
-    // a blank or "undefined" service charge line implying the customer paid one.
+  test('the printed receipt itemises the service charge when one applies', () => {
+    // The default plan charges 20%, so the downloaded document must carry the
+    // service charge line.
     const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: BREAKDOWN });
+    const html = receiptHtml(receipt);
+
+    expect(html).toMatch(/Service charge/);
+    expect(html).toMatch(/GH₵60\.00/);
+    expect(html).toMatch(/GH₵360\.00/);
+  });
+
+  test('the printed receipt omits the service charge when none applies', () => {
+    // A zero-fee plan: the downloaded document must not carry a blank or
+    // "undefined" service charge line implying the customer paid one.
+    const noFee = { ...BREAKDOWN, buyerServiceCharge: 0, buyerPays: 30000 };
+    const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: noFee });
     const html = receiptHtml(receipt);
 
     expect(html).not.toMatch(/Service charge/);
     expect(html).not.toMatch(/undefined/);
     expect(html).toMatch(/GH₵300\.00/);
-  });
-
-  test('the printed receipt itemises a service charge when one is configured', () => {
-    const withFee = { ...BREAKDOWN, grossMinor: 30000, buyerServiceCharge: 3000, buyerPays: 33000 };
-    const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: withFee });
-    const html = receiptHtml(receipt);
-
-    expect(html).toMatch(/Service charge/);
-    expect(html).toMatch(/GH₵30\.00/);
-    expect(html).toMatch(/GH₵330\.00/);
   });
 
   test('survives corrupt storage instead of crashing the panel', () => {
