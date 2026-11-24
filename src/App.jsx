@@ -6,6 +6,7 @@ import useBooking from './hooks/useBooking';
 import { formatPhoneForDisplay } from './lib/accounts';
 import { seedProducts } from './lib/collections';
 import { referenceFromLocation } from './lib/payments';
+import { initWebVitals, trackEvent, EVENTS } from './lib/analytics';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import MetaSignInButton from './components/MetaSignInButton';
 import { PWASetup, PWADetectOffline } from './components/PWASetup';
@@ -15,6 +16,7 @@ import DeliveryCodeDialog from './components/DeliveryCodeDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import { list, replaceAll } from './lib/collections';
 import RatingModal from './components/RatingModal';
+import { useRatings } from './hooks/useRatings';
 import { SocialSignInDivider, PageHeader } from './components/layout/common';
 import { BuyerAccessGate } from './components/access-gates/BuyerAccessGate';
 import { DriverAccessGate } from './components/access-gates/DriverAccessGate';
@@ -105,6 +107,8 @@ function App() {
   } = useBooking({ email, buyerPhone: session?.identifier ?? '', onNotice: showNotice });
 
   const buyerIdentifier = session?.identifier || email;
+
+  const { submitRating } = useRatings();
 
   const [ratingOrder, setRatingOrder] = useState(null);
 
