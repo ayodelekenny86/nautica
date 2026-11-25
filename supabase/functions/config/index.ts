@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { DEFAULT_PRICING, DEFAULT_SPLIT, validateSplit } from '../_lib/pricing.ts';
+import { getPricingConfig } from '../_lib/config-cache.ts';
 import { validatePricingInput, bearerToken, verifyOpsToken } from '../_lib/session.ts';
 import { applyCors, fail, json, readJson } from '../_lib/utils.ts';
 
@@ -39,19 +40,7 @@ Deno.serve(async (req: Request) => {
       if (req.method !== 'GET') return fail(405, 'method_not_allowed', 'Use GET.');
 
       const db = supabase(req);
-      const { data: config, error } = await db
-        .from('config')
-        .select('pricing,split')
-        .eq('key', 'pricing')
-        .single();
-
-      if (error) {
-        return json({ pricing: DEFAULT_PRICING, split: DEFAULT_SPLIT });
-      }
-
-      const pricing = { ...DEFAULT_PRICING, ...(config.pricing ?? {}) };
-      const split = { ...DEFAULT_SPLIT, ...(config.split ?? {}) };
-
+      const { pricing, split } = await getPricingConfig(db);
       return json({ pricing, split });
     }
 

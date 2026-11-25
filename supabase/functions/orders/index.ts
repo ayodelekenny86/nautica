@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { DEFAULT_PRICING, DEFAULT_SPLIT, priceOrder } from '../_lib/pricing.ts';
+import { getPricingConfig } from '../_lib/config-cache.ts';
 import { checkSettlement } from '../_lib/session.ts';
 import { generateId, applyCors, fail, json, readJson, isPlausibleReference } from '../_lib/utils.ts';
 
@@ -60,16 +61,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { data: config, error: configError } = await db
-      .from('config')
-      .select('pricing,split')
-      .eq('key', 'pricing')
-      .single();
-
     // The server recomputes the price from its own config, never trusting
     // anything the client sent.
-    const pricing = configError ? DEFAULT_PRICING : { ...DEFAULT_PRICING, ...(config?.pricing ?? {}) };
-    const split = configError ? DEFAULT_SPLIT : { ...DEFAULT_SPLIT, ...(config?.split ?? {}) };
+    const { pricing, split } = await getPricingConfig(db);
 
     const priced = priceOrder({ pricing, split, volumeLitres });
     const orderId = generateId('NAUT');
