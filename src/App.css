@@ -2096,3 +2096,154 @@ button { cursor: pointer; }
   .map-header { flex-direction: column; align-items: start; }
   .driver-track-grid, .order-track-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   Visual FX — glass, depth, 3D, responsive clicks, 4K
+   Additive layer: enhances existing classes, no JSX changes.
+   ============================================================ */
+
+/* Living ambient backdrop (layered, behind all content) */
+.app-shell {
+  background:
+    radial-gradient(1100px 620px at 10% -12%, rgba(8, 127, 120, .12), transparent 60%),
+    radial-gradient(900px 680px at 112% 8%, rgba(233, 111, 82, .12), transparent 55%),
+    radial-gradient(800px 800px at 50% 120%, rgba(158, 208, 188, .14), transparent 60%),
+    var(--paper);
+}
+
+/* Tactile, smooth interactions */
+button, .role-button, .sidebar-link, .icon-button, .primary-button, .outline-button, .text-button, .confirm-button {
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .25s ease, background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+button:active, .primary-button:active, .outline-button:active, .role-button:active, .icon-button:active, .text-button:active, .confirm-button:active {
+  transform: scale(.955);
+}
+
+/* Click ripple (CSS-only, while pressed) */
+.primary-button, .outline-button, .role-button, .confirm-button, .text-button {
+  position: relative;
+  overflow: hidden;
+}
+.primary-button::after, .outline-button::after, .role-button::after, .confirm-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 70%);
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.primary-button:active::after, .outline-button:active::after, .role-button:active::after, .confirm-button:active::after {
+  animation: ripple .55s ease-out;
+}
+@keyframes ripple {
+  0% { transform: scale(0); opacity: .6; }
+  100% { transform: scale(14); opacity: 0; }
+}
+
+/* Primary button: gradient, sheen, lift */
+.primary-button {
+  background: linear-gradient(135deg, #0a8f86, var(--teal) 55%, #066a65);
+  border-color: transparent;
+  box-shadow: 0 6px 18px -6px rgba(8, 127, 120, .55), inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+.primary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px -8px rgba(8, 127, 120, .6), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.primary-button:disabled { transform: none; box-shadow: none; opacity: .55; cursor: not-allowed; }
+
+/* Cards: depth + 3D hover lift (text-heavy pages excluded) */
+.panel, .job-card, .finance-grid article, .seller-stats > div, .ops-stats > div, .driver-card, .driver-job, .rating-review, .payment-panel {
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1), box-shadow .3s ease, border-color .3s ease;
+  box-shadow: 0 1px 2px rgba(24, 52, 67, .04), 0 10px 26px -20px rgba(24, 52, 67, .4);
+}
+.panel:not(.legal-page):not(.error-boundary):hover,
+.job-card:hover, .finance-grid article:hover, .seller-stats > div:hover, .ops-stats > div:hover,
+.driver-card:hover, .driver-job:hover, .rating-review:hover {
+  transform: perspective(1000px) translateY(-3px) rotateX(1.5deg);
+  box-shadow: 0 20px 44px -24px rgba(24, 52, 67, .5);
+  border-color: #c7ded6;
+}
+.job-card:active, .driver-card:active, .driver-job:active { transform: perspective(1000px) translateY(0) scale(.992); }
+
+/* Glassmorphism on the sign-in / access gates (standalone, safe) */
+.access-gate {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .74), rgba(255, 255, 255, .5));
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, .6);
+  box-shadow: 0 30px 70px -30px rgba(24, 52, 67, .45), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+.access-gate .access-lock {
+  box-shadow: 0 10px 24px -8px rgba(8, 127, 120, .6);
+  animation: pulseLock 3.5s ease-in-out infinite;
+}
+@keyframes pulseLock {
+  0%, 100% { box-shadow: 0 10px 24px -8px rgba(8, 127, 120, .55); }
+  50% { box-shadow: 0 14px 34px -6px rgba(8, 127, 120, .85); }
+}
+
+/* Gradient display text */
+.page-header h1, .access-gate h1, .finance-heading h2, .section-heading h2 {
+  background: linear-gradient(120deg, var(--ink) 18%, #0a8f86 62%, var(--coral) 108%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.institution-hero h2 {
+  background: linear-gradient(120deg, #ffffff 30%, #9ed0bc 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Sidebar depth + active glow */
+.sidebar { background: linear-gradient(180deg, #16303d, #0f2530); box-shadow: 12px 0 44px -22px rgba(0, 0, 0, .55); }
+.role-button.active { box-shadow: inset 0 0 0 1px rgba(158, 208, 188, .35), 0 8px 20px -12px rgba(0, 0, 0, .6); }
+
+/* Row hover sheen */
+.order-row { transition: background-color .2s ease; }
+.order-row:hover { background: linear-gradient(90deg, rgba(216, 238, 226, .4), rgba(255, 255, 255, 0)); }
+
+/* Input focus glow */
+input:focus, select:focus, .input-wrap:focus-within {
+  border-color: var(--teal) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 120, .15);
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+/* 4K / ultra-wide: scale up, keep line length readable */
+@media (min-width: 2200px) {
+  .main-content { padding-left: 80px; padding-right: 80px; }
+  .page-header { min-height: 240px; padding-top: 70px; }
+  .page-header h1 { font-size: 52px; }
+  .page-copy { max-width: 640px; font-size: 15px; }
+  .panel { border-radius: 12px; }
+  .buyer-grid { gap: 28px; }
+  .primary-button, .outline-button { font-size: 13px; padding: 14px 20px; }
+  .order-row { min-height: 76px; font-size: 12px; }
+}
+@media (min-width: 3000px) {
+  .main-content { max-width: 2400px; }
+  .page-header h1 { font-size: 60px; }
+}
+
+/* Accessibility: honour reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .panel:not(.legal-page):not(.error-boundary):hover,
+  .job-card:hover, .finance-grid article:hover, .seller-stats > div:hover, .ops-stats > div:hover,
+  .driver-card:hover, .driver-job:hover, .rating-review:hover, .primary-button:hover {
+    transform: none;
+  }
+}
