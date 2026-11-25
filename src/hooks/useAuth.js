@@ -82,7 +82,7 @@ export function useAuth() {
   // A cached "approved" flag is only a hint so the workspace does not flash a
   // sign-in prompt on every reload. It is re-confirmed against the server before
   // it is trusted, and it is never what grants access on its own.
-  const [sellerApproved, setSellerApproved] = useState(persistedState('auth.seller', false));
+  const [sellerApproved, setSellerApproved] = useState(() => readValue('auth.seller', false));
   const [sellerApplicationId, setSellerApplicationId] = useState(() => readValue('seller.applicationId', null));
 
   // The ops session token. Held in memory only: persisting it to localStorage

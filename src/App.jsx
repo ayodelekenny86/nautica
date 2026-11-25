@@ -81,7 +81,7 @@ function App() {
   const [detailOrderId, setDetailOrderId] = useState(null);
   const [securityBlocked, setSecurityBlocked] = useState(null);
   const [sessionRestored, setSessionRestored] = useState(false);
-  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [lastActivity, setLastActivity] = useState(() => Date.now());
   const [sessionWarning, setSessionWarning] = useState(null);
   const t = translations[language] ?? translations.en;
   seedProducts();
@@ -121,23 +121,6 @@ function App() {
     return () => handlers.forEach((event) => window.removeEventListener(event, onActivity, true));
   }, [sessionWarning]);
 
-  // Session timeout: warn at INACTIVITY_WARN_MS, sign out at SESSION_TTL_MS.
-  useEffect(() => {
-    if (!sessionRestored || !session) return;
-    const now = Date.now();
-    const idleMs = now - lastActivity;
-    if (idleMs > SESSION_TTL_MS) {
-      signOut();
-      clearSession();
-      setSessionWarning('session-expired');
-      logSecurityEvent('session-expired-inactivity', { role: session.role });
-      return;
-    }
-    if (idleMs > SESSION_TTL_MS - INACTIVITY_WARN_MS) {
-      setSessionWarning('session-expiring');
-    }
-  }, [sessionRestored, session, lastActivity]);
-
   useEffect(() => {
     initWebVitals();
     trackEvent(EVENTS.BOOKING_STARTED);
@@ -155,6 +138,23 @@ function App() {
     available, setAvailable,
     ready,
   } = useAuth();
+
+  // Session timeout: warn at INACTIVITY_WARN_MS, sign out at SESSION_TTL_MS.
+  useEffect(() => {
+    if (!sessionRestored || !session) return;
+    const now = Date.now();
+    const idleMs = now - lastActivity;
+    if (idleMs > SESSION_TTL_MS) {
+      signOut();
+      clearSession();
+      setSessionWarning('session-expired');
+      logSecurityEvent('session-expired-inactivity', { role: session.role });
+      return;
+    }
+    if (idleMs > SESSION_TTL_MS - INACTIVITY_WARN_MS) {
+      setSessionWarning('session-expiring');
+    }
+  }, [sessionRestored, session, lastActivity, signOut]);
 
   const {
     orders, booking, updateBooking, requestDelivery, repeatBooking,
