@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
 import { enrichOrdersWithRatings, createRating, getRatings } from './ratings';
-import { list, replaceAll, insert } from './collections';
+import { replaceAll } from './collections';
 
 function reset() {
   replaceAll('ratings', []);

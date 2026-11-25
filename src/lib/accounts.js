@@ -14,7 +14,6 @@
 import {
   createOtpChallenge,
   generateSalt,
-  generatePassword,
   hashPassword,
   verifyOtpChallenge,
   verifyPassword,

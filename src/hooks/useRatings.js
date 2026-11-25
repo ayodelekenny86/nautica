@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getRatings,
-  getRatingsForOrder,
-  getRatingsForSeller,
-  getRatingsForDriver,
   getRatingsByBuyer,
   hasRatedOrder,
   createRating,

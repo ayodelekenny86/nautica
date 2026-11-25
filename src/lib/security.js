@@ -17,7 +17,7 @@
  */
 
 import { randomBytes, toHex, timingSafeEqual } from './secureCode';
-import { readValue, writeValue, clearValue, clearAll } from './storage';
+import { readValue, writeValue, clearValue } from './storage';
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                          */

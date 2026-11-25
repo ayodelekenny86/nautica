@@ -1,6 +1,5 @@
 ﻿import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { apiRequest, apiUrl, apiTarget } from './api';
 
 /**
  * The client has two possible backends, and this module is the only place that
