@@ -7,9 +7,7 @@ import { formatPhoneForDisplay } from './lib/accounts';
 import { seedProducts } from './lib/collections';
 import { referenceFromLocation } from './lib/payments';
 import { initWebVitals, trackEvent, EVENTS } from './lib/analytics';
-import { requireSecureContext, storeSession, readSession, clearSession, logSecurityEvent, SESSION_TTL_MS, INACTIVITY_WARN_MS } from './lib/security';
-import GoogleSignInButton from './components/GoogleSignInButton';
-import MetaSignInButton from './components/MetaSignInButton';
+import { requireSecureContext, readSession, clearSession, logSecurityEvent, SESSION_TTL_MS, INACTIVITY_WARN_MS } from './lib/security';
 import { PWASetup, PWADetectOffline } from './components/PWASetup';
 import SellerDashboard from './components/SellerDashboard';
 import DriverDashboard from './components/DriverDashboard';
@@ -18,23 +16,17 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { list, replaceAll } from './lib/collections';
 import RatingModal from './components/RatingModal';
 import { useRatings } from './hooks/useRatings';
-import { SocialSignInDivider, PageHeader } from './components/layout/common';
 import { BuyerAccessGate } from './components/access-gates/BuyerAccessGate';
 import { DriverAccessGate } from './components/access-gates/DriverAccessGate';
 import { SellerAccessGate } from './components/access-gates/SellerAccessGate';
 import { AdminAccessGate } from './components/access-gates/AdminAccessGate';
 import { BuyerView } from './components/BuyerView';
-import { SellerView } from './components/SellerView';
 import { InstitutionView } from './components/InstitutionView';
 import { OpsView } from './components/OpsView';
 import { BuyerFinance } from './components/BuyerFinance';
-import LiveAgentCard from './components/LiveAgentCard';
-import DeliveryEstimateCard from './components/DeliveryEstimateCard';
-import InstitutionAgentCard from './components/InstitutionAgentCard';
 import { LegalPage } from './components/LegalPage';
 
 // Admin-only and overlay surfaces load on demand.
-const SellerApprovalQueue = lazy(() => import('./components/SellerApprovalQueue'));
 const PaymentPanel = lazy(() => import('./components/PaymentPanel'));
 const OrderDetailModal = lazy(() => import('./components/OrderDetailModal'));
 
@@ -47,8 +39,6 @@ const roles = [
 ];
 
 const ROLE_ICONS = { buyer: '¦', seller: '?', driver: '?', institution: '?', ops: '?' };
-
-const SUPPORT_PHONE = '0545009046';
 
 const PLACEHOLDER_NAMES = { buyer: 'Buyer', seller: 'Seller', driver: 'Driver', institution: 'Institution', ops: 'Admin' };
 
@@ -131,7 +121,7 @@ function App() {
     session, signOut, accountExists,
     buyerAuthenticated, driverAuthenticated, adminAuthenticated, sellerAuthenticated,
     startPhoneSignIn, confirmPhoneCode, signInWithPassword, signInWithGoogleIdentity, signInWithMetaIdentity, registerAccount, linkDriverPhone,
-    phoneCode, phoneIdentifier, signInError, opsToken,
+    phoneCode, phoneIdentifier, signInError,
     authStep, email, setEmail, emailCode, sendOtp, confirmEmailCode,
     sellerProfile, setSellerProfile, sellerApproved, sellerApplicationId,
     applyForSellerApproval, refreshSellerApproval, completeSellerApproval,

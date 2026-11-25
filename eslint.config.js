@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import { readFileSync } from 'node:fs';
@@ -63,9 +64,14 @@ export default [
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      react,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Mark variables used as JSX elements (`<App/>`) as used. Without this the
+      // core no-unused-vars rule reports every component imported for JSX as dead,
+      // which buries the real unused bindings under false positives.
+      'react/jsx-uses-vars': 'error',
       // An import of a name the module does not export is a blank screen at
       // runtime and nothing at build time, because the bundler only warns.
       'no-undef': 'error',
