@@ -4,7 +4,7 @@ What makes Nautica durable — not just profitable for a quarter, but defensible
 for a decade. These are my recommendations as the architect of the model,
 layered on top of the 30%/20% structure.
 
-The thesis: **Nautica's moat is not the 30% commission or the 20% fee — those
+The thesis: **Nautica's moat is not the 30% commission or the 15% fee — those
 are the *price* of the moat. The moat is trust, liquidity, and
 disintermediation resistance.** The rates are set to fund that moat while
 staying contribution-positive from order one.
@@ -92,7 +92,7 @@ featured-placement revenue, not certification.
 
 Hard rules that protect the model from well-meaning "growth" decisions:
 
-1. **Net floor GH₵60/order.** The pricing console rejects any split/discount
+1. **Net floor GH₵50/order.** The pricing console rejects any split/discount
    combination that breaches it (`validateSplit` + operator governance).
 2. **Never cut the buyer fee to fund a discount.** Discounts come from list
    price or SaaS mix. Cutting the fee compounds revenue loss.
@@ -108,7 +108,7 @@ Review these monthly, in this order:
 
 | Metric | Healthy | Action if breached |
 |---|---|---|
-| Net per order | ≥ GH₵90 | Check discount depth + fee |
+| Net per order | ≥ GH₵75 | Check discount depth + fee |
 | Driver churn (annualised) | < 25% | Raise driver share or subsidies |
 | Seller churn (annualised) | < 40% | Check effective take-home vs informal |
 | Repeat buyer rate | > 40% | Loyalty / SaaS push |
@@ -119,7 +119,7 @@ Review these monthly, in this order:
 
 - If **seller churn > 50%** despite subsidies → commission too high, drop to
   25% and make up on SaaS.
-- If **buyer repeat < 30%** → the 20% fee is felt as a tax; either raise
+- If **buyer repeat < 30%** → the 15% fee is felt as a tax; either raise
   perceived value (faster delivery, quality) or introduce a loyalty rebate.
 - If **driver churn > 35%** → 15% is below market; raise to 18% and cut
   platform commission to 27% to hold net.
@@ -131,7 +131,7 @@ positivity. That flex *is* the sustainability.
 
 ## 8. The one-sentence version
 
-Charge enough to fund trust (30% seller / 20% buyer), spend it on certainty
+Charge enough to fund trust (30% seller / 15% buyer), spend it on certainty
 (fast pay, escrow, quality), diversify into recurring SaaS so no single dry
-season can kill you, and never let a growth decision breach the GH₵60 net
+season can kill you, and never let a growth decision breach the GH₵50 net
 floor.

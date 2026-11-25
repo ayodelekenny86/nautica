@@ -17,10 +17,10 @@ export const MINOR_UNITS_PER_MAJOR = 100;
 /**
  * The revenue split, mirroring `src/lib/money.js`.
  *
- * The buyer pays a 20% service charge on top of the water price, and the seller
+ * The buyer pays a 15% service charge on top of the water price, and the seller
  * is auto-charged a 30% platform commission (deducted before payout). On a
- * GH₵300 order: buyer pays GH₵360, seller receives GH₵210 (70%), driver
- * receives GH₵45 (15%), platform keeps GH₵45 (15%) plus the GH₵60 fee.
+ * GH₵300 order: buyer pays GH₵345, seller receives GH₵210 (70%), driver
+ * receives GH₵45 (15%), platform keeps GH₵45 (15%) plus the GH₵45 fee.
  *
  * The "30% seller commission" = platform net (15%) + driver (15%). The three
  * order-value shares (70 + 15 + 15) sum to 100%.
@@ -29,7 +29,7 @@ export const MINOR_UNITS_PER_MAJOR = 100;
  * drift from the client copy.
  */
 export const DEFAULT_SPLIT = {
-  buyerServiceCharge: 20,
+  buyerServiceCharge: 15,
   seller: 70,
   driver: 15,
   platformCommission: 15,

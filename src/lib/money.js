@@ -54,25 +54,25 @@ export function formatCedi(minor) {
  * The default commercial plan.
  *
  * The business rule this file exists to satisfy: the buyer pays the water price
- * plus a 20% service fee, and the seller is auto-charged a 30% platform
+ * plus a 15% service fee, and the seller is auto-charged a 30% platform
  * commission (deducted from their payout before it lands).
  *
  * On a GH₵300 order (GH₵600 list less 50% discount):
- *   - the buyer pays GH₵360.00 (GH₵300 water + GH₵60 service fee);
+ *   - the buyer pays GH₵345.00 (GH₵300 water + GH₵45 service fee);
  *   - the seller receives GH₵210.00 (70% of order value);
  *   - the driver receives GH₵45.00 (15% of order value);
- *   - the platform keeps GH₵45.00 (15% of order value) + the GH₵60 fee.
+ *   - the platform keeps GH₵45.00 (15% of order value) + the GH₵45 fee.
  *
  * The "30% seller commission" is the platform's 15% net plus the 15% driver
  * payout — together 30% of the order value flows to the platform side, of
  * which the driver takes 15%. The three order-value shares (seller 70 + driver
  * 15 + platform 15) sum to exactly 100%, which `validateSplit` enforces.
  *
- * `money.test.js` pins the GH₵360 contract, so changing these rates fails the
+ * `money.test.js` pins the GH₵345 contract, so changing these rates fails the
  * suite rather than quietly charging buyers or sellers differently.
  */
 export const DEFAULT_SPLIT = {
-  buyerServiceCharge: 20,
+  buyerServiceCharge: 15,
   seller: 70,
   driver: 15,
   platformCommission: 15,

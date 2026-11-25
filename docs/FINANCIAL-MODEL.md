@@ -9,7 +9,7 @@ Nautica earns from two sides of the same transaction:
 
 | Charge | Who pays | Rate | Base |
 |---|---|---|---|
-| **Buyer service fee** | Buyer | **20%** | Order value (water price) |
+| **Buyer service fee** | Buyer | **15%** | Order value (water price) |
 | **Seller platform commission** | Seller (auto-deducted) | **30%** | Order value (water price) |
 
 Both are percentages of the **order value** — the price of the water itself,
@@ -66,12 +66,12 @@ stored on the order as `grossMinor` and is the only figure the split touches.
 The buyer pays the order value **plus** the 20% service fee:
 
 ```
-buyerPays = orderValue × (1 + 20%)
-          = GH₵300.00 × 1.20
-          = GH₵360.00
+buyerPays = orderValue × (1 + 15%)
+          = GH₵300.00 × 1.15
+          = GH₵345.00
 ```
 
-The GH₵60.00 fee goes entirely to the platform. It is shown on the receipt as
+The GH₵45.00 fee goes entirely to the platform. It is shown on the receipt as
 a separate "Service charge" line so the buyer sees exactly what they paid for
 the water and what they paid for the service.
 
@@ -80,19 +80,19 @@ the water and what they paid for the service.
 ```
 Platform revenue per order:
   seller commission (30% of order)     GH₵90.00
-+ buyer service fee (20% of order)     GH₵60.00
++ buyer service fee (15% of order)     GH₵45.00
 ─────────────────────────────────────────────────
-  gross platform revenue               GH₵150.00
+  gross platform revenue               GH₵135.00
 
 Platform costs per order:
 − driver payout (15% of order)         GH₵45.00
-− payment processing (~2% of buyer pay) GH₵7.20
+− payment processing (~2% of buyer pay) GH₵6.90
 ─────────────────────────────────────────────────
-  net platform profit                  GH₵97.80
+  net platform profit                  GH₵83.10
 ```
 
-**Net take rate:** GH₵97.80 ÷ GH₵360.00 = **27.2%** of what the buyer pays,
-or **32.6%** of the order value.
+**Net take rate:** GH₵83.10 ÷ GH₵345.00 = **24.1%** of what the buyer pays,
+or **27.7%** of the order value.
 
 ## 6. The formulas (reference)
 
@@ -100,7 +100,7 @@ All amounts in minor units (pesewas) in code; shown here in cedis for reading.
 
 ```
 orderValue        = listPrice × (1 − discountPercent/100) × (1 + surgePercent/100)
-buyerServiceFee   = orderValue × 0.20
+buyerServiceFee   = orderValue × 0.15
 buyerPays         = orderValue + buyerServiceFee
 sellerReceives    = orderValue × 0.70
 platformCommission= orderValue × 0.30
@@ -116,7 +116,7 @@ The code that enforces this lives in `src/lib/money.js`
 
 ```js
 {
-  buyerServiceCharge: 20,   // buyer fee, % of order value
+  buyerServiceCharge: 15,   // buyer fee, % of order value
   seller: 70,               // seller share, % of order value
   driver: 15,               // driver share, % of order value
   platformCommission: 15,   // platform net cut of order value
@@ -133,13 +133,13 @@ business model is the platform's 15% net plus the 15% driver payout — together
 
 | Lever | Effect on platform net (per GH₵300 order) |
 |---|---|
-| Buyer fee 20% → 15% | −GH₵15.00 (net GH₵82.80) |
-| Buyer fee 20% → 25% | +GH₵15.00 (net GH₵112.80) |
-| Seller commission 30% → 25% | −GH₵15.00 (net GH₵82.80) |
-| Seller commission 30% → 35% | +GH₵15.00 (net GH₵112.80) |
-| Driver 15% → 12% | +GH₵9.00 (net GH₵106.80) |
-| Driver 15% → 18% | −GH₵9.00 (net GH₵88.80) |
-| Discount 50% → 40% (order GH₵360) | +GH₵29.34 (net GH₵127.14) |
+| Buyer fee 15% → 10% | −GH₵15.00 (net GH₵68.10) |
+| Buyer fee 15% → 25% | +GH₵30.00 (net GH₵113.10) |
+| Seller commission 30% → 25% | −GH₵15.00 (net GH₵68.10) |
+| Seller commission 30% → 35% | +GH₵15.00 (net GH₵98.10) |
+| Driver 15% → 12% | +GH₵9.00 (net GH₵92.10) |
+| Driver 15% → 18% | −GH₵9.00 (net GH₵74.10) |
+| Discount 50% → 40% (order GH₵360) | +GH₵26.22 (net GH₵109.32) |
 
 The model is most sensitive to the **discount depth** (it moves the order value
 itself) and the **buyer fee** (it is pure platform revenue). See

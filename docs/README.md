@@ -20,12 +20,12 @@ water-delivery marketplace for Ghana.
 
 ## The model in one paragraph
 
-Nautica charges the **buyer a 20% service fee** on top of the water price and
+Nautica charges the **buyer a 15% service fee** on top of the water price and
 **auto-charges the seller a 30% platform commission** on the order value. From
 that commission the platform pays the driver, covers payment processing, and
-keeps the remainder. On a GH₵300 order the buyer pays GH₵360, the seller
-receives GH₵210, the driver earns GH₵45, and Nautica nets GH₵97.80 after
-processing — a 27% net take rate on what the buyer pays. The full derivation
+keeps the remainder. On a GH₵300 order the buyer pays GH₵345, the seller
+receives GH₵210, the driver earns GH₵45, and Nautica nets GH₵82.80 after
+processing — a 24% net take rate on what the buyer pays. The full derivation
 is in [UNIT-ECONOMICS.md](./UNIT-ECONOMICS.md).
 
 ## Conventions

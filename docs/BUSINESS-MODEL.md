@@ -16,7 +16,7 @@ implements. Each block names the code that enforces it.
 ## Value propositions
 
 - **Buyer:** certified source, tracked delivery, receipt, 30–45 min dispatch
-  (vs 2–6h informal). The 20% fee buys this certainty.
+  (vs 2–6h informal). The 15% fee buys this certainty.
 - **Seller:** guaranteed weekly payout, buyer demand, fuel subsidy, free tank
   sanitisation. The 30% commission buys debt elimination + volume.
 - **Driver:** above-informal pay (15% vs ~10%), more orders via geo-dispatch,
@@ -55,7 +55,7 @@ processing (~2%), refunds (1%), SMS. Fixed: ~GH₵4,600/mo pre-seed.
 
 ## Revenue streams
 
-See [REVENUE-MODEL.md](./REVENUE-MODEL.md). Live: buyer fee (20%), seller
+See [REVENUE-MODEL.md](./REVENUE-MODEL.md). Live: buyer fee (15%), seller
 commission (30%). Designed: SaaS, surge, featured placement, certification.
 
 ## The flywheel

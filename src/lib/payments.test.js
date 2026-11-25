@@ -29,8 +29,8 @@ const ORDER = {
   location: 'East Legon, Accra',
   volumeLitres: 5000,
   grossMinor: 30000,
-  chargedMinor: 36000,
-  buyerServiceCharge: 6000,
+  chargedMinor: 34500,
+  buyerServiceCharge: 4500,
   sellerReceives: 21000,
   driverReceives: 4500,
   platformCommission: 4500,
@@ -38,9 +38,9 @@ const ORDER = {
 
 const BREAKDOWN = {
   grossMinor: 30000,
-  // What the customer actually paid: order value plus the 20% service charge.
-  buyerPays: 36000,
-  buyerServiceCharge: 6000,
+  // What the customer actually paid: order value plus the 15% service charge.
+  buyerPays: 34500,
+  buyerServiceCharge: 4500,
   sellerReceives: 21000,
   driverReceives: 4500,
   platformCommission: 4500,
@@ -76,11 +76,11 @@ describe('reading the server order shape', () => {
     volume_litres: 7571,
     currency: 'GHS',
     pricing: { listPrice: 600, discountPercent: 50, surgePercent: 0, surgeReason: '' },
-    split: { buyerServiceCharge: 20, seller: 70, driver: 15, platformCommission: 15 },
+    split: { buyerServiceCharge: 15, seller: 70, driver: 15, platformCommission: 15 },
     gross_minor: 30000,
-    charged_minor: 36000,
-    buyer_pays: 36000,
-    buyer_service_charge: 6000,
+    charged_minor: 34500,
+    buyer_pays: 34500,
+    buyer_service_charge: 4500,
     seller_receives: 21000,
     driver_receives: 4500,
     platform_commission: 4500,
@@ -104,7 +104,7 @@ describe('reading the server order shape', () => {
     ]) {
       expect(order[field], `${field} must be mapped`).not.toBeUndefined();
     }
-    expect(order.chargedMinor).toBe(36000);
+    expect(order.chargedMinor).toBe(34500);
     expect(order.sellerReceives).toBe(21000);
     expect(order.driverReceives).toBe(4500);
     expect(order.volumeLitres).toBe(7571);
@@ -117,7 +117,7 @@ describe('reading the server order shape', () => {
     const order = normaliseOrder(SERVER_ORDER);
     expect(order.listMinor).toBe(60000);
     expect(formatCedi(order.listMinor)).toBe('GH₵600.00');
-    expect(formatCedi(order.chargedMinor)).toBe('GH₵360.00');
+    expect(formatCedi(order.chargedMinor)).toBe('GH₵345.00');
   });
 
   test('prefers a list price the server does send', () => {
@@ -156,7 +156,7 @@ describe('reading the server order shape', () => {
       expect(row, `${forbidden} is not a column on orders`).not.toHaveProperty(forbidden);
     }
     // And the real columns survive the round trip.
-    expect(row.charged_minor).toBe(36000);
+    expect(row.charged_minor).toBe(34500);
     expect(row.gross_minor).toBe(30000);
     expect(row.seller_receives).toBe(21000);
     expect(row.driver_receives).toBe(4500);
@@ -329,7 +329,7 @@ describe('receipts', () => {
     reason: 'payment_confirmed',
     reference: 'aq1-abc',
     orderId: 'NAUT-1A2B3C',
-    amountMinor: 36000,
+    amountMinor: 34500,
     currency: 'GHS',
     provider: 'paystack',
   };
@@ -338,10 +338,10 @@ describe('receipts', () => {
     // This is the call the panel actually makes. It used to pass
     // `result.breakdown`, which is undefined in production, so every figure fell
     // through to `?? 0` and the customer's receipt read GH₵0.00 throughout — on
-    // the document they keep, for a payment that had just taken GH₵360.00.
+    // the document they keep, for a payment that had just taken GH₵345.00.
     const receipt = buildReceipt({ order: ORDER, payment: SETTLEMENT });
 
-    expect(receipt.totalCharged).toBe('GH₵360.00');
+    expect(receipt.totalCharged).toBe('GH₵345.00');
     expect(receipt.orderValue).toBe('GH₵300.00');
     expect(receipt.sellerShare).toBe('GH₵210.00');
     expect(receipt.driverShare).toBe('GH₵45.00');
@@ -388,18 +388,18 @@ describe('receipts', () => {
       breakdown: BREAKDOWN,
     });
 
-    expect(receipt.totalCharged).toBe('GH₵360.00');
+    expect(receipt.totalCharged).toBe('GH₵345.00');
     expect(receipt.sellerShare).toBe('GH₵210.00');
     expect(receipt.driverShare).toBe('GH₵45.00');
     expect(receipt.platformShare).toBe('GH₵45.00');
-    expect(receipt.serviceCharge).toBe('GH₵60.00');
+    expect(receipt.serviceCharge).toBe('GH₵45.00');
     expect(receipt.status).toBe('settled');
   });
 
   test('never shows an order value as the total when a fee is configured', () => {
     // Regression: the receipt once rendered `grossMinor` as the total, which
     // understated the fee and made it vanish from the customer's copy. The
-    // default plan now charges 20%, so the two figures always differ; this case
+    // default plan now charges 15%, so the two figures always differ; this case
     // uses a different fee to prove the receipt shows the actual charge.
     const withFee = { ...BREAKDOWN, grossMinor: 30000, buyerServiceCharge: 3000, buyerPays: 33000 };
     const receipt = buildReceipt({
@@ -414,10 +414,10 @@ describe('receipts', () => {
   });
 
   test('shows the service charge line when a charge applies', () => {
-    // The default plan charges 20%, so the receipt itemises it.
+    // The default plan charges 15%, so the receipt itemises it.
     const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: BREAKDOWN });
-    expect(receipt.serviceCharge).toBe('GH₵60.00');
-    expect(receipt.totalCharged).toBe('GH₵360.00');
+    expect(receipt.serviceCharge).toBe('GH₵45.00');
+    expect(receipt.totalCharged).toBe('GH₵345.00');
     expect(receipt.orderValue).toBe('GH₵300.00');
   });
 
@@ -447,14 +447,14 @@ describe('receipts', () => {
   });
 
   test('the printed receipt itemises the service charge when one applies', () => {
-    // The default plan charges 20%, so the downloaded document must carry the
+    // The default plan charges 15%, so the downloaded document must carry the
     // service charge line.
     const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: BREAKDOWN });
     const html = receiptHtml(receipt);
 
     expect(html).toMatch(/Service charge/);
-    expect(html).toMatch(/GH₵60\.00/);
-    expect(html).toMatch(/GH₵360\.00/);
+    expect(html).toMatch(/GH₵45\.00/);
+    expect(html).toMatch(/GH₵345\.00/);
   });
 
   test('the printed receipt omits the service charge when none applies', () => {

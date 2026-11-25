@@ -8,8 +8,8 @@ clearly labelled projected.
 
 ## Assumptions
 
-- Base order: GH₵300 value, GH₵360 buyer pays, GH₵97.80 Nautica net (30%/20%
-  split, before refund provision; GH₵94.08 after).
+- Base order: GH₵300 value, GH₵345 buyer pays, GH₵83.10 Nautica net (30%/15%
+  split, before refund provision; GH₵79.53 after).
 - Fixed cost grows with headcount and infrastructure (see
   [COST-STRUCTURE.md](./COST-STRUCTURE.md)).
 - Institutional SaaS ramps from year 1 (see [REVENUE-MODEL.md](./REVENUE-MODEL.md)).
@@ -29,14 +29,14 @@ clearly labelled projected.
 | | Year 1 | Year 2 | Year 3 |
 |---|---|---|---|
 | Avg orders/mo | 150 | 400 | 800 |
-| Transaction revenue (net) | GH₵140,040 | GH₵373,440 | GH₵746,880 |
+| Transaction revenue (net) | GH₵118,890 | GH₵317,040 | GH₵634,080 |
 | SaaS revenue | GH₵7,200 | GH₵28,800 | GH₵57,600 |
-| **Total revenue** | **GH₵147,240** | **GH₵402,240** | **GH₵804,480** |
-| Variable costs | GH₵100,656 | GH₵268,416 | GH₵536,832 |
+| **Total revenue** | **GH₵126,090** | **GH₵345,840** | **GH₵691,680** |
+| Variable costs | GH₵99,846 | GH₵266,256 | GH₵532,512 |
 | Fixed costs | GH₵55,200 | GH₵96,000 | GH₵156,000 |
-| **EBITDA** | **−GH₵8,616** | **GH₵37,824** | **GH₵111,648** |
+| **EBITDA** | **−GH₵28,956** | **−GH₵16,416** | **GH₵3,168** |
 
-*Conservative breaks even in year 2. Year 1 is a small planned loss — the
+*Conservative breaks even in year 3. Year 1–2 are planned losses — the
 cost of acquiring the first buyers.*
 
 ## Base scenario
@@ -44,15 +44,15 @@ cost of acquiring the first buyers.*
 | | Year 1 | Year 2 | Year 3 |
 |---|---|---|---|
 | Avg orders/mo | 400 | 1,000 | 2,500 |
-| Transaction revenue (net) | GH₵373,440 | GH₵933,600 | GH₵2,334,000 |
+| Transaction revenue (net) | GH₵317,040 | GH₵792,600 | GH₵1,981,500 |
 | SaaS revenue | GH₵28,800 | GH₵86,400 | GH₵144,000 |
-| Surge (dry season) | GH₵14,400 | GH₵28,800 | GH₵46,800 |
-| **Total revenue** | **GH₵416,640** | **GH₵1,048,800** | **GH₵2,524,800** |
-| Variable costs | GH₵268,416 | GH₵671,040 | GH₵1,677,600 |
+| Surge (dry season) | GH₵12,240 | GH₵24,480 | GH₵39,780 |
+| **Total revenue** | **GH₵358,080** | **GH₵903,480** | **GH₵2,165,280** |
+| Variable costs | GH₵266,256 | GH₵665,640 | GH₵1,664,100 |
 | Fixed costs | GH₵72,000 | GH₵156,000 | GH₵300,000 |
-| **EBITDA** | **GH₵76,224** | **GH₵221,760** | **GH₵547,200** |
+| **EBITDA** | **GH₵19,824** | **GH₵81,840** | **GH₵201,180** |
 
-*Base is EBITDA-positive from month 1 and reaches ~GH₵45k/month EBITDA by
+*Base is EBITDA-positive from month 1 and reaches ~GH₵17k/month EBITDA by
 year 3.*
 
 ## Growth scenario
@@ -60,13 +60,13 @@ year 3.*
 | | Year 1 | Year 2 | Year 3 |
 |---|---|---|---|
 | Avg orders/mo | 800 | 2,500 | 6,000 |
-| Transaction revenue (net) | GH₵746,880 | GH₵2,334,000 | GH₵5,601,600 |
+| Transaction revenue (net) | GH₵634,080 | GH₵1,981,500 | GH₵4,755,600 |
 | SaaS revenue | GH₵57,600 | GH₵240,000 | GH₵480,000 |
-| Surge (dry season) | GH₵28,800 | GH₵72,000 | GH₵120,000 |
-| **Total revenue** | **GH₵833,280** | **GH₵2,646,000** | **GH₵6,201,600** |
-| Variable costs | GH₵536,832 | GH₵1,677,600 | GH₵4,026,240 |
+| Surge (dry season) | GH₵24,480 | GH₵61,200 | GH₵102,000 |
+| **Total revenue** | **GH₵716,160** | **GH₵2,282,700** | **GH₵5,337,600** |
+| Variable costs | GH₵532,512 | GH₵1,664,100 | GH₵3,993,840 |
 | Fixed costs | GH₵108,000 | GH₵300,000 | GH₵720,000 |
-| **EBITDA** | **GH₵188,448** | **GH₵668,400** | **GH₵1,455,360** |
+| **EBITDA** | **GH₵75,648** | **GH₵318,600** | **GH₵623,760** |
 
 *Growth requires the institutional channel to land early and dry-season surge
 to be accepted by buyers. Execution risk is highest here.*
@@ -82,11 +82,11 @@ operating cash, no external financing needed.
 
 - **Driver payout** moving from 15% to 20% cuts net GH₵9/order (~GH₵27k/yr at
   base Y2).
-- **Payment processing** moving from 2% to 2.5% cuts ~GH₵1.80/order.
-- **Refund provision** doubling to 2% cuts ~GH₵3.60/order.
+- **Payment processing** moving from 2% to 2.5% cuts ~GH₵1.73/order.
+- **Refund provision** doubling to 2% cuts ~GH₵3.45/order.
 - **VAT registration** (year 1 base) adds 15% to the buyer fee line as a
   pass-through, not a cost — but requires the fee to be re-displayed
   inclusive.
 
-The model has enough buffer (net GH₵97.80 vs floor GH₵60) to absorb any two
+The model has enough buffer (net GH₵83.10 vs floor GH₵50) to absorb any two
 of these simultaneously without going contribution-negative.

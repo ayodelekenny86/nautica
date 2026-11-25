@@ -21,10 +21,10 @@ import {
 
 const ORDER = {
   id: 'NAUT-1048-2',
-  // GH₵360.00: the water price (GH₵300) plus the 20% service fee (GH₵60).
+  // GH₵345.00: the water price (GH₵300) plus the 15% service fee (GH₵45).
   // The settlement checks are amount-agnostic, so the fixture uses the real
   // default order value.
-  chargedMinor: 36000,
+  chargedMinor: 34500,
   paystackReference: 'aq10482-9f2c1b7a4e6d8c0b1a2c3d4e5f60718',
   status: 'Confirmed',
 };
@@ -93,7 +93,7 @@ describe('settlement decision', () => {
 
   test('refuses a payment smaller than the order', () => {
     // The attack this blocks: create a GH₵1.00 transaction, then present it as
-    // payment for a GH₵360.00 order.
+    // payment for a GH₵345.00 order.
     const result = checkSettlement({ transaction: { ...SUCCESS, amount: 100 }, order: ORDER });
     expect(result.settled).toBe(false);
     expect(result.reason).toBe('amount_mismatch');
@@ -107,7 +107,7 @@ describe('settlement decision', () => {
   });
 
   test('refuses a non-integer amount rather than rounding it into agreement', () => {
-    const result = checkSettlement({ transaction: { ...SUCCESS, amount: 36000.4 }, order: ORDER });
+    const result = checkSettlement({ transaction: { ...SUCCESS, amount: 34500.4 }, order: ORDER });
     expect(result.settled).toBe(false);
     expect(result.reason).toBe('amount_mismatch');
   });
@@ -203,24 +203,24 @@ describe('MSISDN normalisation', () => {
 });
 
 describe('server-side pricing', () => {
-  test('produces the documented default quote: the customer pays GH₵360', () => {
-    // A GH₵600 list price less 50% is GH₵300 water. The buyer pays GH₵360
-    // (GH₵300 + 20% service fee). The seller is auto-charged 30% (GH₵90),
+  test('produces the documented default quote: the customer pays GH₵345', () => {
+    // A GH₵600 list price less 50% is GH₵300 water. The buyer pays GH₵345
+    // (GH₵300 + 15% service fee). The seller is auto-charged 30% (GH₵90),
     // receiving GH₵210; the driver gets GH₵45; the platform keeps GH₵45 + fee.
     const priced = priceOrder({});
     expect(priced.listMinor).toBe(60000);
     expect(priced.discountMinor).toBe(30000);
     expect(priced.grossMinor).toBe(30000);
-    expect(priced.buyerServiceCharge).toBe(6000);
-    expect(priced.chargedMinor).toBe(36000);
+    expect(priced.buyerServiceCharge).toBe(4500);
+    expect(priced.chargedMinor).toBe(34500);
     expect(priced.sellerReceives).toBe(21000);
     expect(priced.driverReceives).toBe(4500);
     expect(priced.platformCommission).toBe(4500);
-    expect(priced.companyTake).toBe(10500);
+    expect(priced.companyTake).toBe(9000);
   });
 
   test('the customer pays the discounted price plus the service charge', () => {
-    // The charged amount is the order value plus the 20% fee, whatever the
+    // The charged amount is the order value plus the 15% fee, whatever the
     // list price, so a price change cannot silently drop the fee.
     for (const listPrice of [200, 450, 600, 1200, 5000]) {
       const priced = priceOrder({ pricing: { ...DEFAULT_PRICING, listPrice } });

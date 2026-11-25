@@ -6,15 +6,15 @@ docs.
 | Term | Meaning |
 |---|---|
 | **Order value** | The price of the water itself, after discount, before any fee. The base every percentage is applied to. Stored as `grossMinor`. |
-| **Buyer pays** | Order value + the 20% buyer service fee. What the customer is actually charged. |
-| **Buyer service fee** | 20% of order value, charged to the buyer on top of the water price. Pure platform revenue. |
+| **Buyer pays** | Order value + the 15% buyer service fee. What the customer is actually charged. |
+| **Buyer service fee** | 15% of order value, charged to the buyer on top of the water price. Pure platform revenue. |
 | **Seller commission** | 30% of order value, auto-deducted from the seller's payout. Funds the driver and the platform. |
 | **Driver share** | 15% of order value, paid to the driver from the commission. |
-| **Platform net** | What Nautica keeps per order after driver pay and processing. GH₵97.80 on a GH₵300 order. |
-| **Contribution margin** | Revenue minus variable costs, before fixed costs. GH₵94.08/order here. |
+| **Platform net** | What Nautica keeps per order after driver pay and processing. GH₵83.10 on a GH₵300 order. |
+| **Contribution margin** | Revenue minus variable costs, before fixed costs. GH₵79.53/order here. |
 | **GMV** | Gross Merchandise Value — total buyer payments across all orders. |
-| **Take rate** | Platform net as a % of buyer payment (27.2%) or order value (32.6%). |
-| **Break-even** | Orders/month needed to cover fixed costs. ~49/month. |
+| **Take rate** | Platform net as a % of buyer payment (24.1%) or order value (27.7%). |
+| **Break-even** | Orders/month needed to cover fixed costs. ~58/month. |
 | **Float** | Working capital held between collecting from buyers and paying sellers/drivers. ~1 week of GMV. |
 | **Surge** | Operator-set scarcity multiplier on the discounted price. 100% platform revenue. |
 | **Discount** | Promotion off the list price. The most powerful lever (moves order value). |

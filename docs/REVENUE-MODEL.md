@@ -6,15 +6,15 @@ designed extensions the business can switch on without re-architecting.
 
 ## Live revenue streams
 
-### 1. Buyer service fee — 20% of order value
+### 1. Buyer service fee — 15% of order value
 
 Charged to the buyer on top of the water price at checkout. Shown as a
 separate "Service charge" line on the receipt (`buildReceipt` in
 `src/lib/payments.js`). Pure platform revenue — no cost of goods attached.
 
-- **Rate:** 20% of order value
-- **Base:** GH₵300 → GH₵60.00 per order
-- **Annualised at 500 orders/mo:** GH₵360,000
+- **Rate:** 15% of order value
+- **Base:** GH₵300 → GH₵45.00 per order
+- **Annualised at 500 orders/mo:** GH₵270,000
 
 ### 2. Seller platform commission — 30% of order value
 
@@ -74,13 +74,13 @@ sellers and sold à la carte to others.
 
 | Stream | Monthly | Share |
 |---|---|---|
-| Buyer service fees | GH₵30,000 | 42% |
+| Buyer service fees | GH₵22,500 | 31% |
 | Seller commissions (net of driver) | GH₵22,500 | 31% |
 | Institutional SaaS | GH₵24,000 | 33% |
-| Surge (dry season avg) | GH₵3,000 | 4% |
+| Surge (dry season avg) | GH₵2,250 | 3% |
 | Featured placement | GH₵1,500 | 2% |
 | Certification | GH₵1,000 | 1% |
-| **Total** | **GH₵82,000** | **100%** |
+| **Total** | **GH₵73,750** | **100%** |
 
 *Projected. The mix deliberately over-indexes on recurring SaaS so the
 business is not hostage to transaction volume alone.*
@@ -91,5 +91,5 @@ business is not hostage to transaction volume alone.*
   Policy in `LEGAL.md` commits to this and it is a core trust asset.
 - **Pay-to-win safety ranking.** A seller's visibility is earned by
   reliability (`src/lib/reliability.js`), never bought.
-- **Hidden fees.** Every charge is itemised on the receipt. The 20% buyer fee
+- **Hidden fees.** Every charge is itemised on the receipt. The 15% buyer fee
   exists precisely so there are no surprise add-ons at delivery.
