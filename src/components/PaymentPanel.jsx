@@ -10,6 +10,7 @@ import {
   verifyPayment,
 } from '../lib/payments';
 import { formatCedi } from '../lib/money';
+import { recordTermsAcceptance, getTermsAcceptance } from '../lib/terms';
 
 /**
  * Mobile-money checkout via Paystack, and receipts.
@@ -76,7 +77,7 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
         // so there is no `breakdown` on the response to pass. The order carries
         // the split the server wrote when it priced the booking, which is where
         // the receipt's seller, driver and platform lines come from.
-        const built = buildReceipt({ order, payment: result });
+        const built = buildReceipt({ order, payment: result, terms: getTermsAcceptance(result.orderId ?? order.id ?? order.code) });
         saveReceipt(built);
         setReceipt(built);
         setHistory(listReceipts());
@@ -102,9 +103,13 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
        setError('Please accept the terms and conditions before proceeding with payment.');
        return;
      }
-     setError('');
-     setBusy(true);
-     try {
+      setError('');
+      setBusy(true);
+      // Persist the consent before the redirect: the return leg runs in a fresh
+      // page load and cannot see React state, so the acceptance is keyed by
+      // order and read back when the receipt is built.
+      recordTermsAcceptance(order.id ?? order.code);
+      try {
        const initiated = await initialisePayment({ orderId: order.id ?? order.code, email, provider });
 
        if (initiated.alreadyPaid) {
@@ -213,6 +218,9 @@ export default function PaymentPanel({ order, onPaid, showNotice }) {
             <div><dt>Water seller</dt><dd>{receiptCell(receipt.sellerShare)}</dd></div>
             <div><dt>Driver</dt><dd>{receiptCell(receipt.driverShare)}</dd></div>
             <div><dt>Nautica</dt><dd>{receiptCell(receipt.platformShare)}</dd></div>
+            {receipt.termsAcceptedAt && (
+              <div><dt>Terms accepted (v{receipt.termsVersion ?? '—'})</dt><dd>{receiptCell(new Date(receipt.termsAcceptedAt).toLocaleString('en-GB'))}</dd></div>
+            )}
           </dl>
           <button className="outline-button" type="button" onClick={() => downloadReceipt(receipt)}>
             Download receipt ?

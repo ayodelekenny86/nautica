@@ -259,7 +259,7 @@ export function saveReceipt(receipt) {
  * took. Where neither is known the figure is left unstated rather than shown as
  * a confident zero.
  */
-export function buildReceipt({ order, payment, breakdown, issuedAt = new Date().toISOString() }) {
+export function buildReceipt({ order, payment, breakdown, terms, issuedAt = new Date().toISOString() }) {
   const source = breakdown ?? order ?? {};
 
   // The order value is what the server priced, before any service charge. It is
@@ -294,6 +294,11 @@ export function buildReceipt({ order, payment, breakdown, issuedAt = new Date().
     platformShare: line(source.platformCommission),
     location: order.location ?? '',
     volume: order.volumeLitres ? `${order.volumeLitres} litres` : '',
+    // Consent audit trail: which version of the terms the buyer accepted, and
+    // when. Recorded before the payment redirect (see src/lib/terms.js) so it
+    // survives the round trip and appears on the document the customer keeps.
+    ...(terms?.version ? { termsVersion: terms.version } : {}),
+    ...(terms?.acceptedAt ? { termsAcceptedAt: terms.acceptedAt } : {}),
   };
 }
 
@@ -342,6 +347,11 @@ export function receiptHtml(receipt) {
     ['Water seller share', cell(receipt.sellerShare)],
     ['Driver share', cell(receipt.driverShare)],
     ['Nautica share', cell(receipt.platformShare)],
+    // Consent audit trail: only present when the buyer accepted the terms, so a
+    // receipt never claims an acceptance that was not recorded.
+    ...(receipt.termsAcceptedAt
+      ? [[`Terms accepted (v${receipt.termsVersion ?? '—'})`, cell(new Date(receipt.termsAcceptedAt).toLocaleString('en-GB'))]]
+      : []),
   ];
 
   // Both providers are live at once, behind their own keys, so naming Paystack

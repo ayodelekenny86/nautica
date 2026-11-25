@@ -436,6 +436,26 @@ describe('receipts', () => {
     expect(receipt.mode).toBeUndefined();
   });
 
+  test('records the terms acceptance on the receipt when supplied', () => {
+    // The consent audit trail: the receipt the customer keeps names the version
+    // they accepted and when, so the acceptance is defensible later.
+    const terms = { version: '2026-11-01', acceptedAt: '2026-11-25T10:00:00.000Z' };
+    const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: BREAKDOWN, terms });
+    expect(receipt.termsVersion).toBe('2026-11-01');
+    expect(receipt.termsAcceptedAt).toBe('2026-11-25T10:00:00.000Z');
+
+    const html = receiptHtml(receipt);
+    expect(html).toMatch(/Terms accepted/);
+    expect(html).toMatch(/2026-11-01/);
+  });
+
+  test('omits the terms line when no acceptance was recorded', () => {
+    const receipt = buildReceipt({ order: ORDER, payment: { reference: 'r1' }, breakdown: BREAKDOWN });
+    expect(receipt.termsVersion).toBeUndefined();
+    expect(receipt.termsAcceptedAt).toBeUndefined();
+    expect(receiptHtml(receipt)).not.toMatch(/Terms accepted/);
+  });
+
   test('persists and de-duplicates by reference', () => {
     const receipt = buildReceipt({ order: ORDER, payment: { reference: 'aq1-abc' }, breakdown: BREAKDOWN });
     saveReceipt(receipt);
