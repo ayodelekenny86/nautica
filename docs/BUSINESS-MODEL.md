@@ -65,5 +65,5 @@ More buyers → more seller volume → sellers earn more → more sellers join
     → faster dispatch + density → better buyer experience → more buyers
 ```
 
-The 30%/20% model funds the flywheel's lubricant (fast pay, escrow, quality).
+The 30%/15% model funds the flywheel's lubricant (fast pay, escrow, quality).
 The SaaS stream keeps the flywheel turning through dry-season slowdowns.

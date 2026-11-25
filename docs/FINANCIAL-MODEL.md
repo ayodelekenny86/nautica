@@ -63,7 +63,7 @@ stored on the order as `grossMinor` and is the only figure the split touches.
 
 ## 4. The buyer fee (on top)
 
-The buyer pays the order value **plus** the 20% service fee:
+The buyer pays the order value **plus** the 15% service fee:
 
 ```
 buyerPays = orderValue × (1 + 15%)

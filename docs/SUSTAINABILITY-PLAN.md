@@ -2,7 +2,7 @@
 
 What makes Nautica durable — not just profitable for a quarter, but defensible
 for a decade. These are my recommendations as the architect of the model,
-layered on top of the 30%/20% structure.
+layered on top of the 30%/15% structure.
 
 The thesis: **Nautica's moat is not the 30% commission or the 15% fee — those
 are the *price* of the moat. The moat is trust, liquidity, and
@@ -53,7 +53,7 @@ financing. Do not let anyone "optimise" it away.
 
 ## 3. Revenue diversification (don't be hostage to transactions)
 
-The 30%/20% model is excellent but transaction-dependent. A dry-season
+The 30%/15% model is excellent but transaction-dependent. A dry-season
 demand dip or a Paystack outage would hit revenue hard. The SaaS and
 certification streams in [REVENUE-MODEL.md](./REVENUE-MODEL.md) exist to
 smooth this.
@@ -79,13 +79,13 @@ The informal tanker has no quality guarantee. Nautica's monthly lab audits
 (Ghana Standards Authority protocol) are a *cost* that becomes a *moat*:
 
 - Sellers who pass get Gold-fleet status → priority dispatch + subsidies.
-- Buyers pay the 20% fee *because* the water is certified — the fee is the
+- Buyers pay the 15% fee *because* the water is certified — the fee is the
   product, not a tax.
 - A single quality failure that goes viral would destroy the premium; the
   audit cadence is insurance.
 
 **Recommendation:** never cut the audit cadence to save cost. It is the thing
-that justifies the 20% buyer fee. If cost pressure demands cuts, cut
+that justifies the 15% buyer fee. If cost pressure demands cuts, cut
 featured-placement revenue, not certification.
 
 ## 5. The guardrails (financial)

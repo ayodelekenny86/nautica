@@ -1,7 +1,7 @@
 # Pricing Strategy
 
 How the order value is set, when to discount, when to surge, and the guardrails
-that keep the 30%/20% model profitable.
+that keep the 30%/15% model profitable.
 
 ## The price equation
 

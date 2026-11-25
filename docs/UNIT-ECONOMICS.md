@@ -70,7 +70,7 @@ week and does not depend on hypergrowth to survive.
 | 1,000 | ~33 | GH₵345,000 | GH₵83,100 | GH₵997,200 |
 | 3,000 | ~100 | GH₵1,035,000 | GH₵249,300 | GH₵2,991,600 |
 
-*Projected. Assumes the base order (GH₵300 value) and the 30%/20% split hold
+*Projected. Assumes the base order (GH₵300 value) and the 30%/15% split hold
 across all volume. Real mix will vary — see [PRICING-STRATEGY.md](./PRICING-STRATEGY.md)
 for volume-tier and institutional pricing.*
 
