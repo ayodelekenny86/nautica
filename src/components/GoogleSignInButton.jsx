@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { googleClientId, isGoogleConfigured, loadGoogleIdentity, signInWithGoogle } from '../lib/googleAuth';
+import { isGoogleConfigured, loadGoogleIdentity, signInWithGoogle } from '../lib/googleAuth';
 
 /**
  * Google sign-in surface.

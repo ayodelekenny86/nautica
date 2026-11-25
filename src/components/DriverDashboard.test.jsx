@@ -2,7 +2,6 @@
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DriverDashboard from './DriverDashboard';
-import { replaceAll } from '../lib/collections';
 import { clearAll } from '../lib/storage';
 
 /**

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { PageHeader } from './layout/common';
 import DeliveryEstimateCard from './DeliveryEstimateCard';
 import LiveAgentCard from './LiveAgentCard';
-import { formatCedi } from '../lib/money';
 import { sanitizeText, sanitizeHtml } from '../lib/sanitize';
 import { validateLocation } from '../lib/security';
 

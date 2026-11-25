@@ -78,7 +78,6 @@ test('rejecting records the decision', async () => {
 test('reports a server rejection rather than dropping the row', async () => {
   const onNotice = vi.fn();
   seedSellerApplication({ applicationId: 'app-1', business: 'AquaFlow Tankers', phone: '0244000000' });
-  const user = userEvent.setup();
   // A token the server will not accept, standing in for a forged or expired one.
   render(<SellerApprovalQueue opsToken="forged.token" onNotice={onNotice} />);
 

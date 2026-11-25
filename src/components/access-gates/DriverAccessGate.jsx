@@ -50,7 +50,18 @@ export function DriverAccessGate({ startSignIn, confirmCode, generatedCode, iden
             <small>An account will be created for this number with a generated password.</small>
           </div>
           <input aria-label="New driver phone" value={localPhone} onChange={(event) => setLocalPhone(event.target.value)} placeholder="Phone number" inputMode="tel" />
-          <button className="primary-button" type="submit">Create account</button>
+          <div className="terms-checkbox">
+            <label>
+              <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required />
+              <span>
+                I agree to the{' '}
+                <a href="#" onClick={(e) => { e.preventDefault(); showNotice('For full terms, please see our LEGAL.md file.'); }}>Terms and Conditions</a>,{' '}
+                <a href="#" onClick={(e) => { e.preventDefault(); showNotice('For refund policy details, please see our LEGAL.md file.'); }}>Refund Policy</a>, and{' '}
+                <a href="#" onClick={(e) => { e.preventDefault(); showNotice('For privacy details, please see our LEGAL.md file.'); }}>Privacy Policy</a>.
+              </span>
+            </label>
+          </div>
+          <button className="primary-button" type="submit" disabled={!termsAccepted}>Create account</button>
           <button className="text-button" type="button" onClick={() => setRegistering(false)}>Back to sign in</button>
         </form>
       ) : step === 'phone' ? (

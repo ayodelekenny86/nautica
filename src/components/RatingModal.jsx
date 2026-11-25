@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState, forwardRef } from 'react';
-import { RATING_CATEGORIES, getCategoryLabel } from '../lib/ratings';
+import { RATING_CATEGORIES } from '../lib/ratings';
 import { trackEvent, EVENTS } from '../lib/analytics';
 
 const STAR_SIZE = 36;
-const STAR_GAP = 4;
 
 function Star({ filled, onClick, onKeyDown, index, disabled, forwardedRef, 'aria-label': ariaLabel }) {
   return (
@@ -71,7 +70,7 @@ export default function RatingModal({
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [touched, setTouched] = useState(false);
+  const [, setTouched] = useState(false);
   const focusRef = useRef(null);
   const firstInputRef = useRef(null);
 
