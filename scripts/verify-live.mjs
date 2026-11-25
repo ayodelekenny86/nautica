@@ -339,8 +339,5 @@ const ROUTES = {
   '/config/update': { fn: 'config', action: 'update' },
   '/fcmToken': { fn: 'fcm', action: 'fcmToken' },
   '/fcmTokenDelete': { fn: 'fcm', action: 'fcmTokenDelete' },
-  '/ai/chat': { fn: 'ai', action: 'chat' },
-  '/notifications': { fn: 'notifications', action: 'list' },
-  '/notifications/read': { fn: 'notifications', action: 'read' },
 };
 

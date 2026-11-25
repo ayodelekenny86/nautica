@@ -3,14 +3,14 @@
 /**
  * Local collection layer for the self-contained build.
  *
- * The five tables the product needs (users, products, orders, notifications and
- * otp_codes) are modelled as persisted collections instead of a SQL database, so
- * the app runs with no backend and no third-party service. The trade-off is
- * deliberate and worth stating plainly: these rows live in this browser's
- * localStorage only. They do not sync across devices, and clearing site data
- * deletes them. Swapping in a real backend later means replacing the bodies of
- * the functions below and nothing else, because every caller goes through this
- * module.
+ * The tables the product needs (users, products, orders, notifications, drivers,
+ * sellers and ratings) are modelled as persisted collections instead of a SQL
+ * database, so the app runs with no backend and no third-party service. The
+ * trade-off is deliberate and worth stating plainly: these rows live in this
+ * browser's localStorage only. They do not sync across devices, and clearing
+ * site data deletes them. Swapping in a real backend later means replacing the
+ * bodies of the functions below and nothing else, because every caller goes
+ * through this module.
  */
 
 const COLLECTIONS = {
@@ -18,17 +18,9 @@ const COLLECTIONS = {
   products: 'db.products',
   orders: 'db.orders',
   notifications: 'db.notifications',
-  otpCodes: 'db.otpCodes',
   drivers: 'db.drivers',
   sellers: 'db.sellers',
-  institutionSchedules: 'db.institution_schedules',
-  qualityRecords: 'db.quality_records',
-  institutionBudget: 'db.institution_budget',
   ratings: 'db.ratings',
-  dynamicPricingRules: 'db.dynamic_pricing_rules',
-  dynamic_pricing_rules: 'db.dynamic_pricing_rules',
-  smartSchedules: 'db.smart_schedules',
-  waterQualityRecords: 'db.water_quality_records',
 };
 
 export const COLLECTION_NAMES = Object.keys(COLLECTIONS);
