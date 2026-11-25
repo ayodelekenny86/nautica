@@ -174,7 +174,7 @@ export function useSellerRatings(sellerId) {
 }
 
 export function useDriverRatings(driverId) {
-  const { getDriverSummary, getDriverRatings, loading, error, refresh, ratings } = useRatings();
+  const { getDriverSummary, loading, error, refresh, ratings } = useRatings();
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
