@@ -152,14 +152,30 @@ export function toServerOrderRow(order) {
 /**
  * Create an order. The server decides the price and returns it; any amount the
  * browser might have wanted to send is not accepted.
+ *
+ * `idempotencyKey` is reused when the buyer retries the same order, so a request
+ * that timed out after the server had already written the order comes back with
+ * that order instead of creating a duplicate and charging twice.
  */
-export async function createOrder({ email, phone, location, volumeLitres }, { signal } = {}) {
-  const payload = await apiRequest('/orders', {
-    method: 'POST',
-    signal,
-    body: { email, phone, location, volumeLitres },
-  });
-  return normaliseOrder(payload.order);
+export async function createOrder({ email, phone, location, volumeLitres, idempotencyKey }, { signal } = {}) {
+  const body = { email, phone, location, volumeLitres, idempotencyKey };
+  let lastError;
+  // A cold start or a load spike can answer a POST with a 5xx. Because the
+  // idempotency key makes a repeat return the original order, retrying is safe
+  // here in a way it never is for payments. A 4xx the caller must fix is final.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const payload = await apiRequest('/orders', { method: 'POST', signal, body });
+      return normaliseOrder(payload.order);
+    } catch (error) {
+      lastError = error;
+      const transient = error.status === 0 || error.status >= 500
+        || /fetch|network|took too long/i.test(error.message || '');
+      if (!transient || attempt === 2 || signal?.aborted) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt + Math.random() * 300));
+    }
+  }
+  throw lastError;
 }
 
 /**

@@ -28,6 +28,9 @@ Deno.serve(async (req: Request) => {
     const phone = String(body.phone ?? '').trim();
     const location = String(body.location ?? '').trim();
     const volumeLitres = Number(body.volumeLitres ?? 0);
+    // A client-generated key, reused when the buyer retries the same order, so a
+    // repeat request returns the original order instead of creating a duplicate.
+    const idempotencyKey = String(body.idempotencyKey ?? '').trim() || null;
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return fail(400, 'invalid_email', 'A valid email address is required for the receipt.');
@@ -42,6 +45,21 @@ Deno.serve(async (req: Request) => {
 
     // Read pricing config from the database (same as pricing function).
     const db = supabase();
+
+    // A retry of the same order attempt: return the order already written under
+    // this key rather than creating a second one. Checked before pricing so a
+    // duplicate never recomputes or re-notifies.
+    if (idempotencyKey) {
+      const { data: existing } = await db
+        .from('orders')
+        .select('*')
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle();
+      if (existing) {
+        return json({ order: { ...existing } });
+      }
+    }
+
     const { data: config, error: configError } = await db
       .from('config')
       .select('pricing,split')
@@ -78,11 +96,24 @@ Deno.serve(async (req: Request) => {
       surge_minor: priced.surgeMinor,
       status: 'Awaiting payment',
       paystack_reference: null,
+      idempotency_key: idempotencyKey,
       created_at: new Date().toISOString(),
     };
 
     const { error } = await db.from('orders').insert(order).select().single();
     if (error) {
+      // Two requests for the same key raced past the pre-check; the unique index
+      // let exactly one insert win. Return the winner's row rather than a 500.
+      if (idempotencyKey && error.code === '23505') {
+        const { data: existing } = await db
+          .from('orders')
+          .select('*')
+          .eq('idempotency_key', idempotencyKey)
+          .maybeSingle();
+        if (existing) {
+          return json({ order: { ...existing } });
+        }
+      }
       console.error('order insert failed', error);
       return fail(500, 'order_failed', 'Could not create the order.');
     }

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { generateBookingCode, generateConfirmationCode } from '../lib/secureCode';
 import { list, replaceAll } from '../lib/collections';
 import { assignDriver, assignSeller } from '../lib/dispatch';
@@ -82,6 +82,13 @@ export function useBooking({ email, buyerPhone = '', onNotice, notify, pricing =
   const [savedAddresses, setSavedAddresses] = useState(initialSavedAddresses);
   const [loading, setLoading] = useState(USE_SERVER);
   const [error, setError] = useState(null);
+
+  // Idempotency key for the order currently being placed. Generated once per
+  // order attempt and reused if the buyer retries the same order, so a request
+  // that timed out after the server had already written the order comes back with
+  // that order instead of creating a duplicate and charging twice. Reset on
+  // success and when the order details change.
+  const idempotencyRef = useRef(null);
 
   // The buyer's live driver update is derived from the most recent order that
   // actually has a driver assigned, rather than being a fixed "Driver Kojo ·
@@ -221,9 +228,25 @@ export function useBooking({ email, buyerPhone = '', onNotice, notify, pricing =
     // Whether the server already wrote this order to the database. It does, under
     // the id it chose, and that document is the one the payment endpoints read.
     let writtenByServer = false;
+    // Reuse the idempotency key across retries of the same order so a request that
+    // timed out after the server wrote the order does not create a duplicate.
+    const signature = `${receiptEmail}|${buyerPhone}|${location}|${volumeLitres}`;
+    if (!idempotencyRef.current || idempotencyRef.current.signature !== signature) {
+      const key = globalThis.crypto?.randomUUID?.()
+        ?? `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      idempotencyRef.current = { signature, key };
+    }
     try {
-      serverOrder = await createOrder({ email: receiptEmail, phone: buyerPhone, location, volumeLitres });
+      serverOrder = await createOrder({
+        email: receiptEmail,
+        phone: buyerPhone,
+        location,
+        volumeLitres,
+        idempotencyKey: idempotencyRef.current.key,
+      });
       writtenByServer = true;
+      // A confirmed write means a retry is a new order, not a repeat of this one.
+      idempotencyRef.current = null;
     } catch (caught) {
       // No server reachable — e.g. running locally without Supabase. Fall back
       // to the client's own pricing so the booking flow still works end to end.

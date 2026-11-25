@@ -12,6 +12,8 @@ import { DEFAULT_PRICING, DEFAULT_SPLIT, priceOrder } from '../functions/lib/pri
  */
 
 const ORDERS = new Map();
+// idempotency key -> order id, so a retried create returns the original order.
+const IDEMPOTENCY = new Map();
 const SELLERS = new Map();
 const OPS = new Map();
 
@@ -103,6 +105,7 @@ function serverOrder(body, pricing = DEFAULT_PRICING, split = DEFAULT_SPLIT) {
  */
 export function installFakeApi({ pricing = DEFAULT_PRICING, split = DEFAULT_SPLIT } = {}) {
   ORDERS.clear();
+  IDEMPOTENCY.clear();
   SELLERS.clear();
   OPS.clear();
   currentPricing = pricing;
@@ -152,7 +155,13 @@ const mock = vi.fn(async (url, init = {}) => {
       if (!String(body.location ?? '').trim()) {
         return json({ code: 'invalid_location', message: 'A delivery address or landmark is required.' }, 400);
       }
-      return json({ order: serverOrder(body, currentPricing, currentSplit) }, 201);
+      const idem = String(body.idempotencyKey ?? '').trim();
+      if (idem && IDEMPOTENCY.has(idem)) {
+        return json({ order: ORDERS.get(IDEMPOTENCY.get(idem)) }, 200);
+      }
+      const order = serverOrder(body, currentPricing, currentSplit);
+      if (idem) IDEMPOTENCY.set(idem, order.id);
+      return json({ order }, 201);
     }
     if (routeKey === 'pricing' && init.method !== 'POST') {
       // Mirrors `apiPricing`: the stored config alongside the derived quote, so
