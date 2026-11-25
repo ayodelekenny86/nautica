@@ -100,6 +100,42 @@ export function apiUrl(path) {
 const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
+ * Retry budget for idempotent reads.
+ *
+ * Under a load spike the server queues and answers some requests with a 5xx or a
+ * 429 instead of failing outright. A single dropped request used to surface to
+ * the customer as a hard error, so one blip ended their flow. Retrying a GET is
+ * safe (it changes nothing), and with exponential backoff plus jitter a crowd of
+ * clients that all got a 503 at the same instant does not retry in lockstep and
+ * hammer the server again.
+ *
+ * Only GETs are retried. A retried POST could create a second order or charge a
+ * card twice, so state-changing requests stay single-attempt and let the caller
+ * decide.
+ */
+const MAX_RETRIES = 2;
+const RETRY_BASE_MS = 300;
+const MAX_RETRY_WAIT_MS = 10000;
+
+function isRetryableStatus(status) {
+  return status === 429 || status >= 500;
+}
+
+function retryWaitMs(attempt, retryAfterHeader) {
+  // A server that sends Retry-After (seconds) knows best; cap it so a wild
+  // value cannot park the request for a minute.
+  if (retryAfterHeader != null) {
+    const seconds = Number(retryAfterHeader);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, MAX_RETRY_WAIT_MS);
+    }
+  }
+  const exponential = RETRY_BASE_MS * 2 ** attempt;
+  const jitter = Math.random() * RETRY_BASE_MS;
+  return Math.min(exponential + jitter, MAX_RETRY_WAIT_MS);
+}
+
+/**
  * Send a request to the Nautica server and parse the JSON reply.
  *
  * A non-2xx reply throws with the server's own customer-facing message and its
@@ -108,74 +144,96 @@ const DEFAULT_TIMEOUT_MS = 30000;
  * a payment flow ends up believing it succeeded.
  */
 export async function apiRequest(path, { method = 'GET', body, signal, auth = null, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
-  // Combined rather than replaced: a caller's own signal (an unmounted component,
-  // a superseded quote) must still cancel the request.
-  const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), timeoutMs);
-  const forwardAbort = () => abort.abort();
-  signal?.addEventListener('abort', forwardAbort);
+  const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  const csrfToken = isStateChanging ? readCsrfToken() : null;
+  const url = apiUrl(path);
 
-  let response;
-  try {
-    const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
-    const csrfToken = isStateChanging ? readCsrfToken() : null;
-    response = await fetch(apiUrl(path), {
-      method,
-      signal: abort.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        // Only sent when there is a token, so unauthenticated calls carry no
-        // Authorization header at all rather than an empty one.
-        ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
-        // CSRF token required on state-changing requests to prevent cross-site
-        // request forgery. The token is bound to the session and validated by
-        // the server; without it the request is rejected.
-        ...(isStateChanging && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-        // The anon key is public by design and is what Supabase uses to identify
-        // the caller. It is not a secret and grants no privileged access.
-        ...(apiTarget() === 'supabase' && anonKey ? { apikey: anonKey } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-  } catch (error) {
-    // Distinguish our own timeout from a caller-initiated cancel. Without this,
-    // an expired quote and a 30-second gateway stall both read as "the network
-    // is down", which sends people to the wrong fix.
-    if (abort.signal.aborted && !signal?.aborted) {
-      const timeout = new Error('The server took too long to answer. Please try again.');
-      timeout.cause = error;
-      throw timeout;
+  let lastError;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    // Combined rather than replaced: a caller's own signal (an unmounted
+    // component, a superseded quote) must still cancel the request.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), timeoutMs);
+    const forwardAbort = () => abort.abort();
+    signal?.addEventListener('abort', forwardAbort);
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        signal: abort.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          // Only sent when there is a token, so unauthenticated calls carry no
+          // Authorization header at all rather than an empty one.
+          ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+          // CSRF token required on state-changing requests to prevent cross-site
+          // request forgery. The token is bound to the session and validated by
+          // the server; without it the request is rejected.
+          ...(isStateChanging && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+          // The anon key is public by design and is what Supabase uses to identify
+          // the caller. It is not a secret and grants no privileged access.
+          ...(apiTarget() === 'supabase' && anonKey ? { apikey: anonKey } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch (error) {
+      // Distinguish our own timeout from a caller-initiated cancel. Without this,
+      // an expired quote and a 30-second gateway stall both read as "the network
+      // is down", which sends people to the wrong fix.
+      if (abort.signal.aborted && !signal?.aborted) {
+        lastError = new Error('The server took too long to answer. Please try again.');
+        lastError.cause = error;
+        lastError.status = 0;
+      } else {
+        lastError = error;
+        lastError.status = 0;
+      }
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', forwardAbort);
+      // A caller cancel is final; a timeout or network drop is retryable for GETs.
+      if (signal?.aborted || method !== 'GET' || attempt >= MAX_RETRIES) throw lastError;
+      await new Promise((r) => setTimeout(r, retryWaitMs(attempt, null)));
+      continue;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', forwardAbort);
     }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-    signal?.removeEventListener('abort', forwardAbort);
-  }
 
-  const text = await response.text();
-  let payload;
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch (error) {
-    const unreadable = new Error('The server returned an unreadable response.');
-    unreadable.cause = error;
-    throw unreadable;
-  }
+    const text = await response.text();
+    let payload;
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch (error) {
+      const unreadable = new Error('The server returned an unreadable response.');
+      unreadable.cause = error;
+      unreadable.status = response.status;
+      throw unreadable;
+    }
 
-  if (!response.ok) {
-    // The server's message is written for a customer, so prefer it over anything
-    // generic. Fall back only when there is none.
-    //
-    // The fallback names no service, because this one function is used by every
-    // endpoint in the app. It used to say "payments service" unconditionally, so
-    // the AI panel reported a missing Gemini key as a payments outage and an
-    // operator reading it would go looking in the wrong place.
-    const error = new Error(payload.message || `The server could not complete that request (${response.status}).`);
-    error.code = payload.code ?? null;
-    error.status = response.status;
-    throw error;
+    if (!response.ok) {
+      // The server's message is written for a customer, so prefer it over anything
+      // generic. Fall back only when there is none.
+      //
+      // The fallback names no service, because this one function is used by every
+      // endpoint in the app. It used to say "payments service" unconditionally, so
+      // the AI panel reported a missing Gemini key as a payments outage and an
+      // operator reading it would go looking in the wrong place.
+      const error = new Error(payload.message || `The server could not complete that request (${response.status}).`);
+      error.code = payload.code ?? null;
+      error.status = response.status;
+      // Retry transient overload for idempotent reads only; a 4xx the caller can
+      // fix (auth, validation) is final.
+      if (method === 'GET' && isRetryableStatus(response.status) && attempt < MAX_RETRIES && !signal?.aborted) {
+        lastError = error;
+        await new Promise((r) => setTimeout(r, retryWaitMs(attempt, response.headers.get('retry-after'))));
+        continue;
+      }
+      throw error;
+    }
+    return payload;
   }
-  return payload;
+  throw lastError;
 }
 
 export { API_ROOT };

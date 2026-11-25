@@ -148,3 +148,52 @@ describe('secret handling', () => {
   });
 });
 
+describe('retrying transient overload', () => {
+  const busy = () => ({
+    ok: false,
+    status: 503,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({ message: 'The server is busy, try again shortly.' }),
+  });
+  const ok = (body) => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify(body) });
+
+  test('a GET that hits a 503 is retried and can still succeed', async () => {
+    await withSupabaseEnv(async (mod) => {
+      fetchMock.mockResolvedValueOnce(busy()).mockResolvedValueOnce(ok({ pricing: {} }));
+      const result = await mod.apiRequest('/config/get');
+      expect(result).toEqual({ pricing: {} });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  test('a GET gives up after the retry budget and surfaces the server message', async () => {
+    await withSupabaseEnv(async (mod) => {
+      fetchMock.mockResolvedValue(busy());
+      await expect(mod.apiRequest('/config/get')).rejects.toThrow(/busy/i);
+      // First attempt plus the two retries.
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  test('a POST is never retried, so a payment cannot be charged twice', async () => {
+    await withSupabaseEnv(async (mod) => {
+      fetchMock.mockResolvedValue(busy());
+      await expect(mod.apiRequest('/payments/initialize', { method: 'POST' })).rejects.toThrow(/busy/i);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('a 4xx the caller can fix is final and not retried', async () => {
+    await withSupabaseEnv(async (mod) => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 403,
+        headers: { get: () => null },
+        text: async () => JSON.stringify({ message: 'This order belongs to a different account.' }),
+      });
+      await expect(mod.apiRequest('/orders/verify?reference=r1')).rejects.toThrow(/different account/i);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
